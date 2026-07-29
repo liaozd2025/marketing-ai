@@ -1,0 +1,567 @@
+<!doctype html>
+<!--
+  PROTOTYPE — 选定范式 C「混合式」精修稿（丢弃品，勿作实现起点）
+  视觉方向：按 JustAI 小加同学 的应用外壳（常驻左侧导航 + 极简白 + 黑色按钮 + 细线图标 + 紫色点缀）。
+  · 新建内容 = JustAI「新对话」式 hero：大输入框 + 对话框内直接「选知识库内容」+ Skill 卡片
+  · 提交后落地 C 混合式工作台：可发布汇总条 + 结果卡片 + 每条聊着改
+  · 导航二库制：知识库（含素材）+ 内容库（成品归档）
+  ?autogen=1 直达已生成状态。全静态假数据，无后端。
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>新建内容 · C 混合式精修稿（JustAI 外壳）</title>
+<style>
+  :root{
+    --sidebar:#FFFFFF; --canvas:#FBFBFC; --surface:#FFFFFF;
+    --ink:#18181B; --ink-2:#6E6E76; --ink-3:#A1A1AA;
+    --line:#ECECEF; --line-2:#F4F4F5; --hover:#F5F5F6; --active:#F1F1F3;
+    --accent:#6D5EF6; --accent-soft:#EFEDFD; --accent-ink:#5647E0;
+    --btn:#18181B; --btn-hover:#000;
+    --ok:#30A46C; --ok-soft:#E9F6EF; --warn:#E5484D; --warn-soft:#FDEBEC;
+    --gold:#B58A34; --gold-soft:#F6EEDD;
+    --r:12px; --r-lg:16px;
+    --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{font-family:var(--font);background:var(--canvas);color:var(--ink);
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.55}
+  button{font-family:inherit;cursor:pointer}
+  #app{height:100%}
+  .scroll{overflow:auto}
+  .scroll::-webkit-scrollbar{width:9px;height:9px}
+  .scroll::-webkit-scrollbar-thumb{background:#E4E4E7;border-radius:99px;border:2px solid var(--surface)}
+  svg.i{width:17px;height:17px;flex:none;stroke:currentColor;stroke-width:1.7;fill:none;
+    stroke-linecap:round;stroke-linejoin:round}
+  .muted{color:var(--ink-2)} .faint{color:var(--ink-3)} .tiny{font-size:12px}
+
+  /* ---------------- shell ---------------- */
+  .app{display:flex;height:100%}
+  .sidebar{width:248px;flex:none;background:var(--sidebar);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;padding:14px 12px}
+  .brand{display:flex;align-items:center;gap:9px;padding:6px 8px 14px}
+  .logo{width:28px;height:28px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#9C8BFF);
+    display:flex;align-items:center;justify-content:center;color:#fff}
+  .brand b{font-size:15px;letter-spacing:-.01em}
+  .brand .sub{font-size:11px;color:var(--ink-3);font-weight:500}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:8px 10px;border-radius:9px;color:var(--ink-2);
+    font-size:13.5px;font-weight:500;text-decoration:none;cursor:pointer}
+  .nav a:hover{background:var(--hover);color:var(--ink)}
+  .nav a.on{background:var(--active);color:var(--ink);font-weight:600}
+  .nav a .i{color:inherit}
+  .nav a .cnt{margin-left:auto;font-size:11px;color:var(--ink-3);background:var(--line-2);padding:1px 7px;border-radius:99px}
+  .nav-sec{font-size:11px;color:var(--ink-3);font-weight:600;padding:16px 10px 7px;letter-spacing:.02em;
+    display:flex;align-items:center}
+  .nav-sec .more{margin-left:auto;color:var(--ink-3);font-weight:500;cursor:pointer}
+  .nav-sec .more:hover{color:var(--ink)}
+  .hist a{font-size:13px;color:var(--ink-2);padding:7px 10px;border-radius:8px;display:block;text-decoration:none;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .hist a:hover{background:var(--hover);color:var(--ink)}
+  .hist .end{font-size:11px;color:var(--ink-3);text-align:center;padding:10px}
+  .side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:10px;display:flex;align-items:center;gap:10px}
+  .tenant-av{width:30px;height:30px;border-radius:99px;flex:none;background:linear-gradient(135deg,#F0C9D8,#E7B3C6);
+    display:flex;align-items:center;justify-content:center;color:#8A2F55;font-weight:700;font-size:12px}
+  .side-foot .nm{font-size:13px;font-weight:600;line-height:1.2}
+  .side-foot .plan{font-size:11px;color:var(--ink-3)}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{height:54px;flex:none;display:flex;align-items:center;gap:12px;padding:0 26px;
+    border-bottom:1px solid var(--line);background:rgba(255,255,255,.85);backdrop-filter:blur(6px)}
+  .topbar .ttl{font-size:15px;font-weight:650}
+  .topbar .path{color:var(--ink-3);font-weight:500}
+  .grow{flex:1}
+  .quota{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2);
+    border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-weight:500}
+  .quota .dia{color:var(--accent)}
+  .up{color:var(--accent-ink);font-weight:600;font-size:13px;text-decoration:none;cursor:pointer}
+  .me{width:30px;height:30px;border-radius:99px;background:#C7C7CE}
+
+  .content{flex:1;padding:26px 32px 90px;width:100%}
+  .content.center{max-width:760px;margin:0 auto}
+  .content.wide{max-width:900px;margin:0 auto}
+
+  /* ---------------- atoms ---------------- */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:10px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:13.5px;font-weight:600;transition:.14s}
+  .btn:hover{background:var(--hover)}
+  .btn.dark{background:var(--btn);border-color:var(--btn);color:#fff}.btn.dark:hover{background:var(--btn-hover)}
+  .btn.sm{padding:6px 11px;font-size:12.5px;border-radius:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:99px;font-size:13px;
+    background:var(--surface);border:1px solid var(--line);color:var(--ink-2);cursor:pointer;transition:.14s}
+  .chip:hover{border-color:#D9D9DE;color:var(--ink)} .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:7px;font-size:12px;font-weight:600}
+  .badge.ok{background:var(--ok-soft);color:var(--ok)}.badge.warn{background:var(--warn-soft);color:var(--warn)}.badge.mut{background:var(--line-2);color:var(--ink-2)}
+  .tag{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600}
+  .tag.persona{background:#EEE9FB;color:#6A4BA6}.tag.seed{background:#E6EFF7;color:#2E6E9E}.tag.camp{background:var(--gold-soft);color:var(--gold)}
+  mark.ban{background:var(--warn-soft);color:var(--warn);padding:0 2px;border-radius:3px;font-weight:600;
+    text-decoration:underline wavy var(--warn);text-underline-offset:3px}
+  .src{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-2);background:var(--line-2);padding:2px 9px;border-radius:6px}
+  .link{background:none;border:none;color:var(--ink-2);font-weight:600;font-size:13px;padding:5px 7px;border-radius:7px;
+    display:inline-flex;align-items:center;gap:6px}.link:hover{background:var(--hover);color:var(--ink)}
+
+  /* ---------------- HERO (新对话式) ---------------- */
+  .hero{padding-top:7vh}
+  .greet{text-align:center;margin-bottom:26px}
+  .greet h1{font-size:30px;font-weight:750;letter-spacing:-.02em;margin:0 0 8px}
+  .greet p{color:var(--ink-2);font-size:15px;margin:0}
+  .composer{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 4px 24px rgba(24,24,27,.05);padding:14px 16px}
+  .composer:focus-within{border-color:#D9D9DE;box-shadow:0 6px 30px rgba(24,24,27,.08)}
+  .sel-row{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .sel-lbl{font-size:12px;color:var(--ink-3);font-weight:500}
+  .kb-chip{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid #E1DCFB;
+    color:var(--accent-ink);border-radius:99px;padding:4px 6px 4px 10px;font-size:12.5px;font-weight:500}
+  .kb-chip .x{width:15px;height:15px;border-radius:99px;background:#E1DCFB;color:var(--accent-ink);border:none;
+    font-size:10px;display:flex;align-items:center;justify-content:center}
+  .kb-chip .x:hover{background:#D3CBF7}
+  .composer textarea{width:100%;border:none;outline:none;resize:none;font-family:inherit;font-size:15px;
+    line-height:1.6;min-height:52px;background:transparent;color:var(--ink)}
+  .composer textarea::placeholder{color:var(--ink-3)}
+  .cbar{display:flex;align-items:center;gap:8px;margin-top:8px}
+  .cbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);border-radius:9px;padding:7px 11px;font-size:13px;font-weight:500}
+  .cbtn:hover{background:var(--hover);color:var(--ink)} .cbtn.act{border-color:#D9D9DE;color:var(--ink)}
+  .cbtn .i{width:15px;height:15px}
+  .send{width:38px;height:38px;border-radius:99px;background:var(--btn);color:#fff;border:none;flex:none;
+    display:flex;align-items:center;justify-content:center}.send:hover{background:#000}
+  .mic{width:34px;height:34px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+    display:flex;align-items:center;justify-content:center}.mic:hover{background:var(--hover)}
+  /* KB picker popover */
+  .picker{position:absolute;left:16px;top:calc(100% + 8px);width:340px;background:var(--surface);border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 12px 40px rgba(24,24,27,.16);padding:8px;z-index:20}
+  .picker .ph{font-size:11px;color:var(--ink-3);font-weight:600;padding:6px 8px}
+  .picker .opt{display:flex;align-items:center;gap:11px;padding:9px 8px;border-radius:9px;cursor:pointer}
+  .picker .opt:hover{background:var(--hover)}
+  .picker .opt .emj{font-size:16px;width:20px;text-align:center}
+  .picker .opt .nm{font-size:13px;font-weight:600}.picker .opt .dt{font-size:11px;color:var(--ink-3)}
+  .picker .opt .ck{margin-left:auto;width:18px;height:18px;border-radius:6px;border:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:#fff}
+  .picker .opt.on .ck{background:var(--accent);border-color:var(--accent)}
+
+  .skill-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:22px}
+  .scard{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:14px;
+    padding:15px 16px;background:var(--surface);cursor:pointer;transition:.14s}
+  .scard:hover{border-color:#D9D9DE;box-shadow:0 4px 16px rgba(24,24,27,.05)}
+  .scard.on{border-color:var(--accent);background:#FCFBFF}
+  .scard .emj{width:38px;height:38px;border-radius:11px;background:var(--line-2);display:flex;align-items:center;
+    justify-content:center;font-size:19px;flex:none}
+  .scard b{font-size:14px}.scard .d{font-size:12px;color:var(--ink-2);margin-top:2px}
+
+  .recent-head{display:flex;align-items:center;margin:26px 0 12px}
+  .recent-head b{font-size:14px}.recent-head .link{margin-left:auto}
+  .recent{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .rcard{border:1px solid var(--line);border-radius:12px;padding:13px 14px;background:var(--surface);cursor:pointer}
+  .rcard:hover{background:var(--hover)}
+  .rcard .rt{font-size:13px;font-weight:600;margin-bottom:8px;line-height:1.4}
+  .rcard .rm{display:flex;align-items:center;gap:7px}
+
+  /* ---------------- RESULTS (C 混合式) ---------------- */
+  .res-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .ctx-read{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .summary{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);
+    border-radius:12px;padding:11px 15px;margin-bottom:14px}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  .post{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:12px}
+  .post.blocked{border-color:#F3CFD1}
+  .post .head{display:flex;align-items:center;gap:8px}.post .head .st{margin-left:auto}
+  .post .body{font-size:14px;line-height:1.72;white-space:pre-wrap}
+  .lint{display:flex;align-items:center;gap:10px;background:var(--warn-soft);border:1px solid #F3CFD1;border-radius:10px;
+    padding:9px 12px;font-size:12.5px;color:#B02A2E}.lint b{color:var(--warn)}
+  .imgs{display:flex;gap:8px;flex-wrap:wrap}
+  .thumb{width:72px;height:72px;border-radius:10px;border:1px solid var(--line);position:relative;overflow:hidden;
+    display:flex;align-items:flex-end;background:linear-gradient(135deg,#F1F1F3,#E9E9EC)}
+  .thumb .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;opacity:.55}
+  .thumb .lbl{position:relative;font-size:9px;line-height:1.2;padding:3px 4px;background:rgba(255,255,255,.9);width:100%;color:var(--ink-2);font-weight:500}
+  .thumb.real::after{content:"实拍";position:absolute;top:4px;right:4px;background:var(--ok);color:#fff;font-size:9px;padding:1px 5px;border-radius:5px;font-weight:700}
+  .thumb.tpl::after{content:"合成";position:absolute;top:4px;right:4px;background:var(--gold);color:#fff;font-size:9px;padding:1px 5px;border-radius:5px;font-weight:700}
+  .foot{display:flex;align-items:center;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+  .refine{border-top:1px dashed var(--line);padding-top:12px}
+  .refine .row{display:flex;gap:8px}
+  .refine input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 13px;outline:none;font-family:inherit;font-size:13px}
+  .refine input:focus{border-color:var(--accent)}
+  .refine .rq{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .refine .rq button{font-size:12px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2)}
+  .refine .rq button:hover{border-color:#D9D9DE;color:var(--ink)}
+  .shimmer{position:relative;overflow:hidden;background:var(--line-2);border-radius:14px}
+  .shimmer::after{content:"";position:absolute;inset:0;transform:translateX(-100%);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.75),transparent);animation:sh 1.1s infinite}
+  @keyframes sh{100%{transform:translateX(100%)}}
+  .proto-flag{position:fixed;right:14px;bottom:14px;font-size:11px;color:var(--ink-3);background:var(--surface);
+    border:1px dashed var(--line);border-radius:99px;padding:5px 11px;z-index:9}
+
+  /* ---------------- 我的资料 ---------------- */
+  .zhead{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .zhead h2{font-size:20px;font-weight:700;margin:0}
+  .zhead .grow{flex:1}
+  .zbanner{display:flex;gap:14px;align-items:flex-start;background:var(--line-2);border:1px solid var(--line);
+    border-radius:14px;padding:16px 18px;margin-bottom:20px}
+  .zbanner .ic{width:40px;height:40px;border-radius:11px;background:var(--btn);color:#fff;flex:none;
+    display:flex;align-items:center;justify-content:center}
+  .zbanner b{font-size:14.5px}.zbanner p{margin:4px 0 0;color:var(--ink-2);font-size:13px;line-height:1.6}
+  .zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+  .zcard{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px;cursor:pointer;
+    transition:.14s;display:flex;flex-direction:column;gap:10px;min-height:132px}
+  .zcard:hover{border-color:#D9D9DE;box-shadow:0 6px 20px rgba(24,24,27,.06)}
+  .zcard .top{display:flex;align-items:center;gap:10px}
+  .zcard .fico{width:34px;height:34px;border-radius:10px;background:var(--line-2);display:flex;align-items:center;
+    justify-content:center;font-size:17px}
+  .zcard b{font-size:14.5px}.zcard .ct{margin-left:auto;font-size:12px;color:var(--ink-3)}
+  .zcard .dt{font-size:12px;color:var(--ink-2)}
+  .zcard .barwrap{margin-top:auto;display:flex;align-items:center;gap:8px}
+  .zcard .bar{flex:1;height:5px;border-radius:99px;background:var(--line-2);overflow:hidden}
+  .zcard .bar i{display:block;height:100%;background:var(--ok)}.zcard .bar i.w{background:var(--gold)}
+  .zcard .pct{font-size:11px;font-weight:700;color:var(--ink-2)}
+  /* detail */
+  .zdtop{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .zdtop .nm{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px}
+  .zdtop .sub{font-size:12px;color:var(--ink-3)}
+  .uploads{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px}
+  .dz{border:1.5px dashed var(--line);border-radius:14px;padding:26px;display:flex;flex-direction:column;
+    align-items:center;gap:8px;text-align:center;background:var(--surface)}
+  .dz .big{width:40px;height:40px;color:var(--ink-3)}
+  .dz b{font-size:14px}.dz .h{font-size:12px;color:var(--ink-2)}
+  .dz .h2{font-size:11px;color:var(--ink-3)}
+  .lz{border:1.5px dashed var(--line);border-radius:14px;padding:22px;background:var(--surface)}
+  .lz .lh{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+  .lz .sub{font-size:11px;color:var(--ink-3);margin:4px 0 12px}
+  .lz textarea{width:100%;min-height:96px;border:1px solid var(--line);border-radius:10px;padding:11px 13px;
+    outline:none;font-family:inherit;font-size:13px;resize:none}.lz textarea:focus{border-color:var(--accent)}
+  .extracted{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .extracted .eh{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+  .extracted .eh b{font-size:14px}
+  .frow{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--line-2)}
+  .frow:last-child{border-bottom:none}
+  .frow .fk{width:96px;flex:none;font-size:13px;color:var(--ink-2);font-weight:600}
+  .frow .fv{font-size:13.5px;line-height:1.6}
+  .olist{display:flex;flex-direction:column;gap:10px}
+  .orow{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:11px;padding:12px 14px}
+  .orow .oemj{width:34px;height:34px;border-radius:9px;background:var(--line-2);display:flex;align-items:center;justify-content:center;font-size:16px}
+  .orow b{font-size:13.5px}.orow .os{font-size:12px;color:var(--ink-2)}
+  .imgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+  .ithumb{aspect-ratio:1;border-radius:11px;border:1px solid var(--line);position:relative;overflow:hidden;
+    display:flex;align-items:flex-end;background:linear-gradient(135deg,#F1F1F3,#E9E9EC)}
+  .ithumb .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;opacity:.5}
+  .ithumb .lbl{position:relative;font-size:9px;padding:3px 4px;background:rgba(255,255,255,.9);width:100%;color:var(--ink-2);font-weight:500}
+  .ithumb.real::after{content:"实拍";position:absolute;top:4px;right:4px;background:var(--ok);color:#fff;font-size:9px;padding:1px 5px;border-radius:5px;font-weight:700}
+  .note{display:flex;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid #E1DCFB;color:var(--accent-ink);
+    border-radius:10px;padding:8px 12px;font-size:12.5px;margin-bottom:14px}
+
+  @media(max-width:920px){.sidebar{display:none}.skill-cards,.recent,.uploads{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="proto-flag">◇ 原型 · 代码即弃</div>
+<script>
+/* ---------------- 图标 ---------------- */
+const I={
+  compose:'<svg class="i" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  skill:'<svg class="i" viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z"/></svg>',
+  kb:'<svg class="i" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v18H6a2 2 0 0 1-2-2Z"/><path d="M8 3v18"/></svg>',
+  lib:'<svg class="i" viewBox="0 0 24 24"><path d="M4 4h6v16H4Z"/><path d="M14 4h6v16h-6Z"/></svg>',
+  attach:'<svg class="i" viewBox="0 0 24 24"><path d="M21 12.5 12.5 21a4.5 4.5 0 0 1-6.4-6.4l8.5-8.5a3 3 0 0 1 4.2 4.2l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg>',
+  sliders:'<svg class="i" viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h12M20 18h0"/><circle cx="15" cy="6" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="16" cy="18" r="2"/></svg>',
+  mic:'<svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  up:'<svg class="i" viewBox="0 0 24 24" stroke-width="2.2"><path d="M12 19V5M6 11l6-6 6 6"/></svg>',
+  send:'<svg class="i" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4Z"/></svg>',
+  copy:'<svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+  img:'<svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="9" cy="9" r="1.6"/><path d="m21 15-5-5L5 21"/></svg>',
+  check:'<svg class="i" viewBox="0 0 24 24" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg>',
+  warn:'<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6A2 2 0 0 0 22 18L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>',
+  wand:'<svg class="i" viewBox="0 0 24 24"><path d="m3 21 12-12M15 9l3-3-3-3M6 3l1 2 2 1-2 1-1 2-1-2-2-1 2-1Z"/></svg>',
+  back:'<svg class="i" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
+  dia:'<svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px"><path d="M12 2 22 12 12 22 2 12Z"/></svg>',
+};
+
+/* ---------------- 假数据（虚构商家「悦见美学」） ---------------- */
+const TENANT="悦见美学";
+const KB=[
+  {k:"brand",emj:"🎭",name:"品牌档案",dt:"阿悦院长 · 温柔专业",count:"1 份",fill:100,
+    detail:{type:"fields",items:[
+      {k:"人设",v:"阿悦院长 · 从业 12 年皮肤管理师，温柔、专业、耐心"},
+      {k:"语气",v:'亲和专业，多用"陪你 / 帮你"，不下承诺'},
+      {k:"品牌故事",v:'2018 年创立，主打"慢护理"——不追求立竿见影，陪顾客养好底子'},
+      {k:"禁忌表达",v:"疗效承诺 / 绝对化用语 / 医疗术语（进违禁词校验）"}]}},
+  {k:"offering",emj:"💧",name:"Offering",dt:"深清/水光焕肤 等 4 项",count:"4 项",fill:100,
+    detail:{type:"list",items:[
+      {n:"深层清洁护理",s:"¥398 · 60min · 毛孔粗大 / 暗沉"},
+      {n:"水光焕肤",s:"¥680 · 疗程 3 次 · 补水修护屏障"},
+      {n:"抗初老紧致",s:"¥1280 · 初老细纹 / 松弛"},
+      {n:"黄金射频",s:"¥1580 · 紧致提拉"}]}},
+  {k:"audience",emj:"🎯",name:"客群",dt:"都市初老女性 · 2 类",count:"2 类",fill:80,
+    detail:{type:"fields",items:[
+      {k:"画像",v:"25–40 岁都市女性，注重护肤，预算中高"},
+      {k:"核心痛点",v:"毛孔粗大、暗沉、初老细纹"},
+      {k:"称呼方式",v:'"姐妹 / 宝子"，亲切不油腻'}]}},
+  {k:"campaign",emj:"🎁",name:"活动",dt:"七夕焕肤季 · 进行中",count:"1 个",fill:100,
+    detail:{type:"fields",items:[
+      {k:"活动",v:"七夕焕肤季"},{k:"时间",v:"即日起 – 8/20"},
+      {k:"力度",v:"深清满 1000 减 200，闺蜜同行第二人半价"}]}},
+  {k:"segment",emj:"👥",name:"会员分层",dt:"新客/活跃/沉睡/将到期",count:"4 层",fill:100,
+    detail:{type:"fields",note:"零 PII：只存分层定义与触达场景，不存任何个人信息（ADR-0003）",items:[
+      {k:"新客",v:"首次到店 30 天内"},{k:"活跃",v:"近 60 天有消费"},
+      {k:"沉睡",v:"90 天未到店"},{k:"卡项将到期",v:"剩余次数≤1 或 15 天内到期"}]}},
+  {k:"asset",emj:"📸",name:"素材",dt:"38 张实拍 · 已打标",count:"38 张",fill:90,
+    detail:{type:"images"}},
+];
+const SKILLS=[
+  {k:"pyq",emj:"📱",n:"朋友圈日更",d:"人设 / 种草 / 活动，一次 3–5 条"},
+  {k:"vip",emj:"💌",n:"会员触达",d:"按分层 × 场景生成触达话术"},
+  {k:"grp",emj:"👯",n:"社群运营",d:"群公告 / 活动预热 / 干货分享"},
+  {k:"xhs",emj:"📕",n:"小红书图文",d:"标题 + 正文 + 封面图"},
+];
+const RECENT=[
+  {t:"七夕焕肤季 · 朋友圈 ×3",tag:"活动",when:"今天"},
+  {t:"水光焕肤 · 种草稿 ×2",tag:"种草",when:"昨天"},
+  {t:"沉睡客唤醒 · 触达话术 ×4",tag:"会员触达",when:"3 天前"},
+];
+const NAV=[
+  {k:"new",i:I.compose,t:"新建内容"},
+  {k:"skill",i:I.skill,t:"Skill 技能",cnt:"4"},
+  {k:"kb",i:I.kb,t:"我的资料",cnt:"6 类"},
+  {k:"lib",i:I.lib,t:"内容库"},
+];
+
+function seedPosts(){return[
+  {id:"p1",type:"persona",tl:"人设",
+    body:"今天又有老顾客问我：为什么你总劝我别急着上项目？\n其实皮肤和养生一样，三分靠护理、七分靠坚持。在悦见，我从不追求立竿见影，只想陪你把底子一点点养好。\n——阿悦院长",
+    banned:[],compliant:null,sources:["品牌档案·阿悦人设","客群·都市初老女性"],
+    imgs:[{emj:"🧖‍♀️",lbl:"院长工作照",real:1},{emj:"🕯️",lbl:"门店环境",real:1}]},
+  {id:"p2",type:"seed",tl:"种草",
+    body:"换季爆痘别慌！悦见水光焕肤，医学级修护配方，能彻底根除痘印，做完立刻见效，跟痘痘肌彻底说拜拜～",
+    banned:["医学级","彻底根除","立刻见效"],
+    compliant:"换季总冒痘？悦见水光焕肤帮肌肤补水、稳定屏障，做完摸起来水水的。护理要坚持状态才会慢慢变稳～具体适不适合你，来店里让阿悦帮你看看肤质。",
+    sources:["Offering·水光焕肤","素材·护理过程","违禁词表·美业"],
+    imgs:[{emj:"💧",lbl:"仪器特写",real:1},{emj:"🔬",lbl:"效果对比·强制实拍",real:1}]},
+  {id:"p3",type:"camp",tl:"活动",
+    body:"🌙 七夕焕肤季来啦～\n即日起到店，深层清洁护理满 1000 减 200，闺蜜同行第二人再享半价。\n名额有限，私信阿悦帮你锁定专属时段 💗",
+    banned:[],compliant:null,sources:["活动·七夕焕肤季","Offering·深层清洁护理"],
+    imgs:[{emj:"🎁",lbl:"活动海报·模板合成",tpl:1},{emj:"🛋️",lbl:"门店环境",real:1}]},
+];}
+
+/* ---------------- 状态 ---------------- */
+const S={
+  view:"hero",                         // hero | results
+  skill:"pyq",
+  sel:["brand","offering","campaign","audience"],  // 已选知识库
+  pickerOpen:false, draft:"给七夕活动写今天的朋友圈，人设+种草+活动各一条",
+  stage:"idle", posts:null, openRefine:null,
+};
+const kbByKey=k=>KB.find(e=>e.k===k);
+
+/* ---------------- 卡片 ---------------- */
+function hl(b,ban){let h=b.replace(/</g,"&lt;").replace(/\n/g,"<br>");ban.forEach(w=>h=h.replaceAll(w,`<mark class="ban">${w}</mark>`));return h;}
+function tcls(t){return t==="persona"?"persona":t==="seed"?"seed":"camp";}
+function card(p){
+  const lint=p.banned.length?`<div class="lint">${I.warn}<div>命中违禁词 <b>${p.banned.join("、")}</b>（美业·疗效承诺类），已阻止「可发布」。</div>
+    <button class="btn dark sm" style="margin-left:auto" data-rw="${p.id}">${I.wand} 一键合规改写</button></div>`:"";
+  const st=p.banned.length?`<span class="badge warn">${I.warn} 不可发布 · ${p.banned.length} 处</span>`:`<span class="badge ok">${I.check} 可发布</span>`;
+  const imgs=p.imgs.map(m=>`<div class="thumb ${m.real?'real':m.tpl?'tpl':''}"><div class="ph">${m.emj}</div><div class="lbl">${m.lbl}</div></div>`).join("");
+  return `<div class="post ${p.banned.length?'blocked':''}" data-card="${p.id}">
+    <div class="head"><span class="tag ${tcls(p.type)}">${p.tl}朋友圈</span><span class="st">${st}</span></div>
+    <div class="body">${hl(p.body,p.banned)}</div>${lint}
+    <div class="ctx-read">${p.sources.map(s=>`<span class="src">📎 ${s}</span>`).join("")}</div>
+    <div><div class="tiny faint" style="margin-bottom:7px">配图建议（点标签调素材）</div><div class="imgs">${imgs}</div></div>
+    <div class="foot"><button class="link" data-copy="${p.id}">${I.copy} 复制文案</button>
+      <button class="link" data-imgs="${p.id}">${I.img} 换配图</button>
+      ${p.banned.length?"":`<span class="badge ok" style="margin-left:auto">${I.check} 已过校验，可复制发布</span>`}</div>
+    <div class="refine"><div class="row"><input placeholder="聊着改这一条…例如「开头更抓人一点」" data-rin="${p.id}">
+      <button class="btn dark" data-rsend="${p.id}">${I.send}</button></div>
+      <div class="rq"><button data-rq="${p.id}">更口语</button><button data-rq="${p.id}">更简短</button>
+        <button data-rq="${p.id}">换个开头</button><button data-rq="${p.id}">加点 emoji</button></div></div></div>`;
+}
+
+/* ---------------- 视图 ---------------- */
+function heroView(){
+  const chips=S.sel.map(k=>{const e=kbByKey(k);return `<span class="kb-chip">${e.emj} ${e.name}<button class="x" data-unsel="${k}">×</button></span>`;}).join("");
+  const picker=S.pickerOpen?`<div class="picker" id="picker">
+    <div class="ph">从「我的资料」中选择要参考的内容（可多选）</div>
+    ${KB.map(e=>`<div class="opt ${S.sel.includes(e.k)?'on':''}" data-tog="${e.k}">
+      <span class="emj">${e.emj}</span><div><div class="nm">${e.name}</div><div class="dt">${e.dt}</div></div>
+      <span class="ck">${S.sel.includes(e.k)?I.check:""}</span></div>`).join("")}</div>`:"";
+  const skill=SKILLS.find(s=>s.k===S.skill);
+  return `<div class="content center hero">
+    <div class="greet"><h1>Hi，我是你的私域内容助手</h1><p>先选好资料，一句话就能生成今天要发的内容</p></div>
+    <div class="composer">
+      <div class="sel-row"><span class="sel-lbl">已选资料</span>${chips}
+        <button class="chip" data-openpicker style="border-style:dashed;color:var(--accent-ink);border-color:#E1DCFB">${I.attach} 选资料</button></div>
+      <textarea id="draft" placeholder="输入你的想法…例如：给七夕活动写 3 条朋友圈">${S.draft}</textarea>
+      <div class="cbar">
+        <button class="cbtn" data-openpicker>${I.attach} 我的资料 · ${S.sel.length}</button>
+        <button class="cbtn act">${I.skill} ${skill.n}</button>
+        <button class="cbtn">${I.sliders} 3 条 · 亲和</button>
+        <div class="grow"></div>
+        <button class="mic">${I.mic}</button>
+        <button class="send" id="send">${I.up}</button>
+      </div>
+      ${picker}
+    </div>
+    <div class="skill-cards">
+      ${SKILLS.map(s=>`<div class="scard ${S.skill===s.k?'on':''}" data-skill="${s.k}">
+        <div class="emj">${s.emj}</div><div><b>${s.n}</b><div class="d">${s.d}</div></div></div>`).join("")}
+    </div>
+    <div class="recent-head"><b>最近生成</b><button class="link">查看内容库 →</button></div>
+    <div class="recent">
+      ${RECENT.map(r=>`<div class="rcard"><div class="rt">${r.t}</div>
+        <div class="rm"><span class="badge mut">${r.tag}</span><span class="tiny faint">${r.when}</span>
+          <span class="badge ok" style="margin-left:auto">${I.check} 可发布</span></div></div>`).join("")}
+    </div>
+  </div>`;
+}
+
+function resultsView(){
+  const ctx=S.sel.map(k=>{const e=kbByKey(k);return `<span class="src">📎 ${e.name}</span>`;}).join("");
+  let body;
+  if(S.stage==="loading") body=`<div class="stack">${[0,1,2].map(()=>`<div class="shimmer" style="height:190px"></div>`).join("")}</div>`;
+  else{
+    const blocked=S.posts.filter(p=>p.banned.length).length;
+    body=`<div class="summary"><span class="badge mut">共 ${S.posts.length} 条</span>
+      <span class="badge ok">${I.check} ${S.posts.length-blocked} 条可发布</span>
+      ${blocked?`<span class="badge warn">${I.warn} ${blocked} 条待改</span>`:""}
+      <span class="tiny faint" style="margin-left:auto">来源：所选知识库注入 · 违禁词表已校验</span></div>
+      <div class="stack">${S.posts.map(card).join("")}</div>`;
+  }
+  return `<div class="content wide">
+    <div class="res-top"><button class="btn sm" id="back">${I.back} 返回新建</button>
+      <span class="tiny faint">本次上下文</span><div class="ctx-read">${ctx}</div></div>
+    ${body}</div>`;
+}
+
+/* 冷启动录入区（上传文件 / 添加链接），我的资料详情页复用 —— 借 JustAI 交互，产出仍是结构化实体 */
+function uploadsBlock(entityName){
+  return `<div class="zbanner"><div class="ic">${I.wand}</div>
+    <div><b>让平台更懂你的生意</b>
+    <p>上传店铺资料、产品介绍、公众号/小红书文章链接，AI 会读完自动抽取并填入「${entityName}」——不用你一栏栏手填。</p></div></div>
+  <div class="uploads">
+    <div class="dz"><span class="big">${I.up}</span><b>上传文件</b>
+      <div class="h">拖拽或点击选择文件</div>
+      <button class="btn dark" style="margin:4px 0">选择文件</button>
+      <div class="h2">支持 PDF、Word、Excel、图片等</div></div>
+    <div class="lz"><div class="lh">${I.kb} 添加网页链接</div>
+      <div class="sub">支持小红书、公众号、知乎等</div>
+      <textarea placeholder="粘贴链接…AI 抽取后填入结构化字段"></textarea></div>
+  </div>`;
+}
+
+function ziliaoView(){
+  const cards=KB.map(e=>`<div class="zcard" data-zopen="${e.k}">
+    <div class="top"><div class="fico">${e.emj}</div><b>${e.name}</b><span class="ct">${e.count}</span></div>
+    <div class="dt">${e.dt}</div>
+    <div class="barwrap"><div class="bar"><i class="${e.fill<85?'w':''}" style="width:${e.fill}%"></i></div>
+      <span class="pct">${e.fill}%</span></div></div>`).join("");
+  return `<div class="content wide">
+    <div class="zhead"><h2>我的资料</h2><div class="grow"></div>
+      <button class="btn dark">${I.wand} 一键建库 · AI 抽取</button>
+      <button class="btn">${I.compose} 编辑</button></div>
+    <div class="zbanner"><div class="ic">${I.wand}</div>
+      <div><b>让平台更懂你的生意</b>
+      <p>先把店铺资料、产品介绍、公众号/小红书链接丢进来，AI 会自动整理成下面六类结构化资料——这是内容"出自你自己资料"、且不违规的底座。</p></div></div>
+    <div class="zgrid">${cards}</div>
+  </div>`;
+}
+
+function ziliaoDetailView(){
+  const e=kbByKey(S.detailKey), d=e.detail;
+  let inner;
+  if(d.type==="images"){
+    const t=[["🧖‍♀️","院长工作照"],["💧","仪器特写"],["🔬","效果对比"],["🛋️","门店环境"],["🎁","活动海报"],["✨","护理过程"],["🧴","产品陈列"],["🕯️","前台"]];
+    inner=`<div class="extracted"><div class="eh">${I.img}<b>已打标素材（${e.count}）</b>
+      <span class="tiny faint" style="margin-left:auto">效果类图强制实拍 · ADR-0002</span></div>
+      <div class="imgrid">${t.map(x=>`<div class="ithumb real"><div class="ph">${x[0]}</div><div class="lbl">${x[1]}</div></div>`).join("")}</div></div>`;
+  } else if(d.type==="list"){
+    inner=`<div class="extracted"><div class="eh">${I.check}<b>AI 已抽取为结构化 ${e.name}（${e.count}）</b></div>
+      <div class="olist">${d.items.map(o=>`<div class="orow"><div class="oemj">${e.emj}</div>
+        <div><b>${o.n}</b><div class="os">${o.s}</div></div></div>`).join("")}</div></div>`;
+  } else {
+    inner=`<div class="extracted"><div class="eh">${I.check}<b>AI 已抽取为结构化字段</b></div>
+      ${d.note?`<div class="note">${I.warn} ${d.note}</div>`:""}
+      ${d.items.map(f=>`<div class="frow"><div class="fk">${f.k}</div><div class="fv">${f.v}</div></div>`).join("")}</div>`;
+  }
+  return `<div class="content wide">
+    <div class="zdtop"><button class="btn sm" id="zback">${I.back} 我的资料</button>
+      <div><div class="nm">${e.emj} ${e.name} ${I.sliders}</div><div class="sub">${e.count} · 完善度 ${e.fill}%</div></div></div>
+    ${uploadsBlock(e.name)}
+    ${inner}
+  </div>`;
+}
+
+/* ---------------- 渲染 ---------------- */
+function render(){
+  const activeNav=(S.view==="hero"||S.view==="results")?"new":(S.view==="ziliao"||S.view==="ziliao-detail")?"kb":"";
+  const nav=NAV.map(n=>`<a class="${activeNav===n.k?'on':''}" data-nav="${n.k}">${n.i}<span>${n.t}</span>${n.cnt?`<span class="cnt">${n.cnt}</span>`:""}</a>`).join("");
+  const titles={hero:"新建内容",results:"内容工作台",ziliao:"我的资料","ziliao-detail":"我的资料"};
+  const views={hero:heroView,results:resultsView,ziliao:ziliaoView,"ziliao-detail":ziliaoDetailView};
+  const hist=RECENT.map(r=>`<a>${r.t}</a>`).join("")+`<div class="end">已加载全部</div>`;
+  document.getElementById("app").innerHTML=`
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><div class="logo">${I.compose}</div><div><b>私域内容</b><div class="sub">Studio · 美业垂类</div></div></div>
+      <nav class="nav">${nav}</nav>
+      <div class="nav-sec">最近生成<span class="more">内容库 →</span></div>
+      <div class="hist scroll">${hist}</div>
+      <div class="side-foot"><div class="tenant-av">悦</div>
+        <div style="flex:1;min-width:0"><div class="nm">${TENANT}</div><div class="plan">种子商家 · 内测版</div></div></div>
+    </aside>
+    <main class="main">
+      <div class="topbar"><span class="ttl">${titles[S.view]}</span>
+        ${(S.view==='hero'||S.view==='results')?`<span class="path">· ${SKILLS.find(s=>s.k===S.skill).n}</span>`:""}<div class="grow"></div>
+        <span class="quota"><span class="dia">${I.dia}</span> 320 额度</span><a class="up">升级</a><div class="me"></div></div>
+      <div class="scroll" style="flex:1">${views[S.view]()}</div>
+    </main>
+  </div>`;
+  wire();
+}
+
+/* ---------------- 交互 ---------------- */
+function generate(){S.view="results";S.posts=seedPosts();S.stage="loading";S.openRefine=null;render();
+  setTimeout(()=>{S.stage="done";render();},850);}
+function wire(){
+  document.querySelectorAll("[data-nav]").forEach(el=>el.onclick=()=>{
+    const k=el.dataset.nav;
+    if(k==="new"){S.view="hero";render();}
+    else if(k==="kb"){S.view="ziliao";render();}
+  });
+  if(S.view==="ziliao"){
+    document.querySelectorAll("[data-zopen]").forEach(el=>el.onclick=()=>{S.detailKey=el.dataset.zopen;S.view="ziliao-detail";render();});
+    return;
+  }
+  if(S.view==="ziliao-detail"){
+    document.getElementById("zback").onclick=()=>{S.view="ziliao";render();};
+    return;
+  }
+  if(S.view==="hero"){
+    const dr=document.getElementById("draft");
+    if(dr){dr.addEventListener("input",e=>S.draft=e.target.value);
+      dr.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();generate();}});}
+    document.getElementById("send").onclick=generate;
+    document.querySelectorAll("[data-openpicker]").forEach(el=>el.onclick=e=>{e.stopPropagation();S.pickerOpen=!S.pickerOpen;render();});
+    document.querySelectorAll("[data-tog]").forEach(el=>el.onclick=e=>{e.stopPropagation();const k=el.dataset.tog;
+      S.sel=S.sel.includes(k)?S.sel.filter(x=>x!==k):[...S.sel,k];render();});
+    document.querySelectorAll("[data-unsel]").forEach(el=>el.onclick=()=>{S.sel=S.sel.filter(x=>x!==el.dataset.unsel);render();});
+    document.querySelectorAll("[data-skill]").forEach(el=>el.onclick=()=>{S.skill=el.dataset.skill;S.pickerOpen=false;render();
+      const t=document.getElementById("draft");if(t)t.focus();});
+    if(S.pickerOpen) setTimeout(()=>document.addEventListener("click",closePicker),0);
+  } else {
+    document.getElementById("back").onclick=()=>{S.view="hero";S.stage="idle";render();};
+    document.querySelectorAll("[data-rw]").forEach(el=>el.onclick=()=>{const p=S.posts.find(x=>x.id===el.dataset.rw);
+      if(p){p.body=p.compliant;p.banned=[];p.sources=p.sources.filter(s=>!s.includes("违禁词"));}render();});
+    document.querySelectorAll("[data-copy]").forEach(el=>el.onclick=()=>{const o=el.innerHTML;el.innerHTML=`${I.check} 已复制`;setTimeout(()=>el.innerHTML=o,1200);});
+    document.querySelectorAll("[data-imgs]").forEach(el=>el.onclick=()=>{el.innerHTML=`${I.check} 已换一批`;setTimeout(()=>render(),650);});
+    const refine=id=>{const c=document.querySelector(`[data-card="${id}"]`);if(c)c.style.opacity=".5";
+      setTimeout(()=>{render();const e=document.querySelector(`[data-card="${id}"]`);if(e)e.scrollIntoView({block:"center",behavior:"smooth"});},650);};
+    document.querySelectorAll("[data-rsend]").forEach(el=>el.onclick=()=>refine(el.dataset.rsend));
+    document.querySelectorAll("[data-rq]").forEach(el=>el.onclick=()=>refine(el.dataset.rq));
+    document.querySelectorAll("[data-rin]").forEach(el=>el.addEventListener("keydown",e=>{if(e.key==="Enter")refine(el.dataset.rin);}));
+  }
+}
+function closePicker(e){const p=document.getElementById("picker");
+  if(p&&!p.contains(e.target)&&!e.target.closest("[data-openpicker]")){S.pickerOpen=false;document.removeEventListener("click",closePicker);render();}}
+
+render();
+if(new URLSearchParams(location.search).get("autogen")==="1"){S.view="results";S.posts=seedPosts();S.stage="done";render();}
+</script>
+</body>
+</html>
