@@ -6,11 +6,13 @@
   "scripts": {
     "build": "pnpm --filter @marketing-ai/web build",
     "db:migrate": "pnpm --filter @marketing-ai/database migrate",
-    "dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm --filter @marketing-ai/web dev",
+    "dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm --parallel --filter @marketing-ai/web --filter @marketing-ai/agent-worker run dev",
     "dev:down": "docker compose down",
     "lint": "eslint . --max-warnings=0",
     "test": "pnpm --recursive --if-present test",
-    "typecheck": "pnpm --recursive --if-present typecheck"
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "worker": "pnpm --filter @marketing-ai/agent-worker start",
+    "worker:once": "pnpm --filter @marketing-ai/agent-worker once"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

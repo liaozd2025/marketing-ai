@@ -1,22 +1,20 @@
 {
-  "name": "@marketing-ai/database",
+  "name": "@marketing-ai/agent-worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
   "scripts": {
-    "migrate": "node --env-file-if-exists=../../apps/web/.env.local --import tsx scripts/migrate.ts",
+    "dev": "tsx watch src/run.ts",
+    "start": "tsx src/run.ts",
+    "once": "tsx src/run.ts --once",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@marketing-ai/agent-service": "workspace:*",
-    "pg": "^8.22.0"
+    "@marketing-ai/database": "workspace:*"
   },
   "devDependencies": {
-    "@types/pg": "^8.15.5",
     "tsx": "^4.20.6"
   }
 }

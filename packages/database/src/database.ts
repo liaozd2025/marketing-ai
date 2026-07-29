@@ -1,6 +1,8 @@
 import { Pool } from "pg";
 
+import { AgentQueueDataAccess } from "./agent-queue-data-access";
 import { IdentityDataAccess } from "./identity-data-access";
+import { TenantAgentDataAccess } from "./tenant-agent-data-access";
 import { TenantDataAccess } from "./tenant-data-access";
 import type { SqlExecutor, TenantId } from "./types";
 
@@ -8,6 +10,7 @@ const localDatabaseUrl =
   "postgresql://marketing_ai:marketing_ai@localhost:5432/marketing_ai";
 
 export class Database {
+  readonly agentQueue: AgentQueueDataAccess;
   readonly identity: IdentityDataAccess;
   private readonly pool: Pool;
   private readonly executor: SqlExecutor;
@@ -18,7 +21,12 @@ export class Database {
       query: async (text, values) =>
         this.pool.query(text, values ? [...values] : undefined),
     };
+    this.agentQueue = new AgentQueueDataAccess(this.pool);
     this.identity = new IdentityDataAccess(this.pool);
+  }
+
+  agentForTenant(merchantId: TenantId): TenantAgentDataAccess {
+    return new TenantAgentDataAccess(this.pool, merchantId);
   }
 
   forTenant(merchantId: TenantId): TenantDataAccess {
