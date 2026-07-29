@@ -1,0 +1,12 @@
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+.DS_Store
+pnpm-debug.log*

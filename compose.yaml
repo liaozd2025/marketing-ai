@@ -1,0 +1,19 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: marketing_ai
+      POSTGRES_PASSWORD: marketing_ai
+      POSTGRES_USER: marketing_ai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketing_ai -d marketing_ai"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    ports:
+      - "5432:5432"
+    volumes:
+      - marketing_ai_postgres:/var/lib/postgresql/data
+
+volumes:
+  marketing_ai_postgres:

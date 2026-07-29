@@ -1,0 +1,386 @@
+:root {
+  --accent: #7655ff;
+  --background: #f5f5f3;
+  --border: #deded9;
+  --ink: #171717;
+  --muted: #6f6f68;
+  --panel: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+  color: var(--ink);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  background: var(--ink);
+  border: 0;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  font-weight: 650;
+  min-height: 44px;
+  padding: 0 18px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.auth-layout {
+  align-items: center;
+  background:
+    radial-gradient(circle at 25% 15%, #e9e4ff 0, transparent 32%),
+    var(--background);
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 32px 20px;
+}
+
+.auth-card {
+  background: color-mix(in srgb, white 94%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: 0 24px 70px rgb(30 25 60 / 9%);
+  max-width: 440px;
+  padding: 40px;
+  width: 100%;
+}
+
+.brand-mark {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 11px;
+  color: white;
+  display: flex;
+  font-size: 18px;
+  font-weight: 800;
+  height: 42px;
+  justify-content: center;
+  margin-bottom: 28px;
+  width: 42px;
+}
+
+.brand-mark.small {
+  border-radius: 8px;
+  flex: 0 0 auto;
+  font-size: 14px;
+  height: 30px;
+  margin: 0;
+  width: 30px;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  margin: 0 0 10px;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+.auth-card h1 {
+  font-size: 30px;
+  letter-spacing: -0.04em;
+  margin-bottom: 8px;
+}
+
+.muted,
+.auth-switch {
+  color: var(--muted);
+}
+
+.auth-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 30px;
+}
+
+.auth-form label {
+  display: grid;
+  font-size: 14px;
+  font-weight: 650;
+  gap: 8px;
+}
+
+.auth-form input {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  min-height: 46px;
+  outline: none;
+  padding: 0 13px;
+}
+
+.auth-form input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgb(118 85 255 / 12%);
+}
+
+.form-error {
+  background: #fff0f0;
+  border: 1px solid #f3c7c7;
+  border-radius: 9px;
+  color: #9d2929;
+  font-size: 14px;
+  margin: 20px 0 -10px;
+  padding: 11px 13px;
+}
+
+.auth-switch {
+  font-size: 14px;
+  margin: 25px 0 0;
+  text-align: center;
+}
+
+.auth-switch a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.workspace-shell {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #efefec;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 18px;
+}
+
+.sidebar-brand {
+  align-items: center;
+  display: flex;
+  font-weight: 800;
+  gap: 10px;
+  margin: 0 8px 36px;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 5px;
+}
+
+.sidebar nav a {
+  border-radius: 9px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 12px;
+  text-decoration: none;
+}
+
+.sidebar nav a.active,
+.sidebar nav a:hover {
+  background: white;
+  color: var(--ink);
+}
+
+.secondary-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  width: 100%;
+}
+
+.workspace-content {
+  margin: 0 auto;
+  max-width: 1160px;
+  padding: 36px 48px 64px;
+  width: 100%;
+}
+
+.workspace-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 36px;
+}
+
+.workspace-header h1 {
+  font-size: 27px;
+  letter-spacing: -0.04em;
+  margin-bottom: 0;
+}
+
+.role-badge,
+.status {
+  background: #ede9ff;
+  border-radius: 999px;
+  color: #6040dd;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 7px 10px;
+}
+
+.welcome-panel {
+  background: var(--ink);
+  border-radius: 20px;
+  color: white;
+  margin-bottom: 20px;
+  overflow: hidden;
+  padding: 48px;
+  position: relative;
+}
+
+.welcome-panel::after {
+  background: var(--accent);
+  border-radius: 50%;
+  content: "";
+  filter: blur(2px);
+  height: 230px;
+  opacity: 0.6;
+  position: absolute;
+  right: -85px;
+  top: -115px;
+  width: 230px;
+}
+
+.welcome-panel h2 {
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: -0.05em;
+  margin-bottom: 14px;
+  max-width: 680px;
+}
+
+.welcome-panel p:not(.eyebrow) {
+  color: #bdbdb6;
+  line-height: 1.6;
+  max-width: 620px;
+}
+
+.welcome-panel strong {
+  color: white;
+}
+
+.welcome-panel button {
+  background: white;
+  color: var(--ink);
+  margin-top: 10px;
+}
+
+.workspace-grid {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.info-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  min-height: 220px;
+  padding: 26px;
+}
+
+.card-index {
+  color: var(--muted);
+  display: block;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  margin-bottom: 38px;
+}
+
+.info-card h3 {
+  font-size: 21px;
+  margin-bottom: 9px;
+}
+
+.info-card > p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.member-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.member-list li {
+  border-top: 1px solid var(--border);
+  display: flex;
+  font-size: 13px;
+  justify-content: space-between;
+  padding: 12px 0;
+}
+
+.member-list li span:last-child {
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .auth-card {
+    padding: 30px 24px;
+  }
+
+  .workspace-shell {
+    display: block;
+  }
+
+  .sidebar {
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    border-right: 0;
+    flex-direction: row;
+    padding: 12px 16px;
+  }
+
+  .sidebar-brand {
+    margin: 0;
+  }
+
+  .sidebar nav {
+    display: none;
+  }
+
+  .sidebar form {
+    width: 110px;
+  }
+
+  .workspace-content {
+    padding: 28px 18px 48px;
+  }
+
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-panel {
+    padding: 34px 26px;
+  }
+}
