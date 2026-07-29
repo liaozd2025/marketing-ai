@@ -57,6 +57,10 @@ class MemoryQueue implements WorkerQueue {
     ];
   }
 
+  async getAssetEmbeddingSource() {
+    return null;
+  }
+
   async completeTask(
     _task: ClaimedAgentTask,
     _workerId: string,

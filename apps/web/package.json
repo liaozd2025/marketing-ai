@@ -11,6 +11,7 @@
     "verify:composition-api": "tsx scripts/verify-composition-api.ts"
   },
   "dependencies": {
+    "@marketing-ai/asset-storage": "workspace:*",
     "@marketing-ai/content-skills": "workspace:*",
     "@marketing-ai/database": "workspace:*",
     "@marketing-ai/html-renderer": "workspace:*",

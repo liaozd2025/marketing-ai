@@ -13,11 +13,15 @@
   },
   "dependencies": {
     "@marketing-ai/agent-service": "workspace:*",
+    "@marketing-ai/asset-storage": "workspace:*",
     "@marketing-ai/content-skills": "workspace:*",
     "@marketing-ai/database": "workspace:*",
     "@marketing-ai/vertical-packs": "workspace:*"
   },
   "devDependencies": {
+    "@types/pg": "^8.15.5",
+    "pg": "^8.22.0",
+    "sharp": "^0.34.5",
     "tsx": "^4.20.6"
   }
 }

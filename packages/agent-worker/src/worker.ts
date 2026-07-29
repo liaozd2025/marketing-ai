@@ -1,10 +1,13 @@
 import {
+  EMBEDDING_DIMENSIONS,
   ProvidersExhaustedError,
   ProviderRouter,
   type AgentRequest,
 } from "@marketing-ai/agent-service";
+import { readAssetFile } from "@marketing-ai/asset-storage";
 import { SkillProtocolError } from "@marketing-ai/content-skills";
 import type {
+  AssetEmbeddingSource,
   ClaimedAgentTask,
   ConversationMessage,
 } from "@marketing-ai/database";
@@ -26,6 +29,9 @@ export interface WorkerQueue {
   getConversationMessages(
     task: ClaimedAgentTask,
   ): Promise<ConversationMessage[]>;
+  getAssetEmbeddingSource(
+    task: ClaimedAgentTask,
+  ): Promise<AssetEmbeddingSource | null>;
 }
 
 function prompt(input: ClaimedAgentTask["input"]): string {
@@ -35,10 +41,12 @@ function prompt(input: ClaimedAgentTask["input"]): string {
   return input.prompt;
 }
 
-function requestForTask(
+async function requestForTask(
   task: ClaimedAgentTask,
   messages: readonly ConversationMessage[],
-): AgentRequest {
+  queue: WorkerQueue,
+  readAsset: (storageKey: string) => Promise<Uint8Array>,
+): Promise<AgentRequest> {
   if ("kind" in task.input) {
     throw new Error("Skill tasks require the configured Skill runtime");
   }
@@ -57,6 +65,35 @@ function requestForTask(
       };
     case "embedding":
       if (
+        "purpose" in task.input &&
+        task.input.purpose === "asset-index"
+      ) {
+        const source = await queue.getAssetEmbeddingSource(task);
+        if (!source) {
+          throw new Error(
+            "Asset embedding source was missing or belonged to another merchant",
+          );
+        }
+        if (!source.mimeType.startsWith("image/")) {
+          throw new Error(
+            "Only image assets support local multimodal embedding",
+          );
+        }
+        return {
+          capability: "embedding",
+          request: {
+            dimensions: EMBEDDING_DIMENSIONS,
+            inputs: [
+              {
+                data: await readAsset(source.storageKey),
+                mediaType: source.mimeType,
+                type: "image",
+              },
+            ],
+          },
+        };
+      }
+      if (
         !("texts" in task.input) ||
         !Array.isArray(task.input.texts) ||
         task.input.texts.some((text) => typeof text !== "string")
@@ -65,7 +102,10 @@ function requestForTask(
       }
       return {
         capability: "embedding",
-        request: { texts: task.input.texts },
+        request: {
+          dimensions: EMBEDDING_DIMENSIONS,
+          inputs: task.input.texts.map((text) => ({ text, type: "text" })),
+        },
       };
   }
 }
@@ -76,6 +116,9 @@ export class AgentWorker {
     private readonly queue: WorkerQueue,
     private readonly router: ProviderRouter,
     private readonly skillRuntime?: SkillRuntime,
+    private readonly readAsset: (
+      storageKey: string,
+    ) => Promise<Uint8Array> = readAssetFile,
   ) {}
 
   async runOnce(): Promise<boolean> {
@@ -98,7 +141,12 @@ export class AgentWorker {
       const result = await this.router.execute({
         request: prepared
           ? prepared.request
-          : requestForTask(task, messages),
+          : await requestForTask(
+              task,
+              messages,
+              this.queue,
+              this.readAsset,
+            ),
         taskAttempt: task.attemptCount,
         taskId: task.id,
       });
@@ -111,7 +159,9 @@ export class AgentWorker {
       if (error instanceof ProvidersExhaustedError) {
         await this.queue.failOrRetryTask(task, this.workerId, {
           code: "PROVIDERS_EXHAUSTED",
-          message: error.message,
+          message: error.failures
+            .map((failure) => `${failure.code}: ${failure.message}`)
+            .join("; "),
           retryable: error.retryable,
         });
       } else if (error instanceof SkillProtocolError) {

@@ -23,12 +23,27 @@ export interface ImageResult {
 }
 
 export interface EmbeddingRequest {
-  readonly texts: readonly string[];
+  readonly dimensions: typeof EMBEDDING_DIMENSIONS;
+  readonly inputs: readonly EmbeddingInput[];
 }
 
 export interface EmbeddingResult {
+  readonly embeddingSpace: string;
   readonly embeddings: readonly (readonly number[])[];
 }
+
+export const EMBEDDING_DIMENSIONS = 1536;
+
+export type EmbeddingInput =
+  | {
+      readonly text: string;
+      readonly type: "text";
+    }
+  | {
+      readonly data: Uint8Array;
+      readonly mediaType: string;
+      readonly type: "image";
+    };
 
 export interface TextProvider {
   readonly capability: "text";

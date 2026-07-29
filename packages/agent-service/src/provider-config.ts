@@ -3,6 +3,7 @@ import {
   CompatibleImageProvider,
   CompatibleTextProvider,
 } from "./openai-compatible";
+import { DashscopeMultimodalEmbeddingProvider } from "./dashscope-multimodal";
 import {
   DeterministicEmbeddingProvider,
   DeterministicImageProvider,
@@ -88,10 +89,13 @@ export function providerRoutesFromEnvironment(
     }),
   ];
   const embedding: EmbeddingProvider[] = [
-    new CompatibleEmbeddingProvider({
-      ...compatible,
+    new DashscopeMultimodalEmbeddingProvider({
+      apiKey: compatible.apiKey,
+      baseUrl:
+        environment.AGENT_DOMESTIC_MULTIMODAL_BASE_URL ??
+        "https://dashscope.aliyuncs.com",
       id: "domestic-embedding",
-      model: environment.AGENT_EMBEDDING_MODEL ?? "text-embedding-v4",
+      model: environment.AGENT_EMBEDDING_MODEL ?? "qwen3-vl-embedding",
     }),
     new CompatibleEmbeddingProvider({
       apiKey:
@@ -102,7 +106,7 @@ export function providerRoutesFromEnvironment(
       id: "secondary-embedding",
       model:
         environment.AGENT_SECONDARY_EMBEDDING_MODEL ??
-        "BAAI/bge-m3",
+        "Qwen/Qwen3-Embedding-8B",
     }),
   ];
 

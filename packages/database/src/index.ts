@@ -12,10 +12,14 @@ export {
 export { TenantDataAccess } from "./tenant-data-access";
 export { CompositionDataAccess } from "./composition-data-access";
 export { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
+export { embeddingVector } from "./embedding";
 export { tenantId } from "./types";
 export type {
   Asset,
+  AssetIndexingStatus,
   AssetInput,
+  AssetSearchFilters,
+  AssetSearchResult,
   Audience,
   AudienceInput,
   BrandProfile,

@@ -35,19 +35,22 @@ pnpm test
 pnpm build
 ```
 
-需要验证真实的迁移、租户隔离、队列领取、provider 降级留痕和续聊时，可使用
-独立测试数据库：
+需要验证真实的迁移、租户隔离、队列领取、provider 降级留痕、素材多模态
+索引和续聊时，可使用独立测试数据库：
 
 ```bash
 DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5434/marketing_ai pnpm db:migrate
 TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5434/marketing_ai pnpm --filter @marketing-ai/database test
+TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5434/marketing_ai pnpm --filter @marketing-ai/agent-worker test
 ```
 
 ## Agent 服务
 
 `packages/agent-service` 定义 text、image、embedding 三类 provider 契约。
-默认主路由是阿里云百炼兼容接口，备选路由是可独立配置地址、密钥和模型的
-OpenAI-compatible provider。三类路由均可分别用
+text/image 默认主路由是阿里云百炼兼容接口；embedding 的主路由使用百炼
+原生多模态接口和 `qwen3-vl-embedding`，可同时接受文本或真实图像字节。
+备选路由是可独立配置地址、密钥和模型的 OpenAI-compatible provider。
+三类路由均可分别用
 `AGENT_*_PROVIDER_ORDER` 调整顺序。开发环境在真实 provider 未配置时会降级到
 确定性 provider，方便在没有外部密钥时验证完整链路；生产环境默认禁止测试
 provider，除非显式设置 `AGENT_ALLOW_TEST_PROVIDERS=true`。
@@ -56,6 +59,17 @@ provider，除非显式设置 `AGENT_ALLOW_TEST_PROVIDERS=true`。
 执行轮次、成功/失败和错误。全部 provider 失败时，仅有可重试错误才按指数退避
 重新排队；最多执行 `max_attempts` 次，配置错误和无效响应直接进入 `failed`。
 worker 异常退出留下的 lease 会在后续 worker 启动时恢复。
+
+素材与查询向量固定为 **1536 维**，对应 PostgreSQL
+`knowledge_item_embeddings.embedding vector(1536)`。worker 和数据层会拒绝
+维度不符或包含非有限数值的 provider 响应，避免索引混入不兼容向量。
+OpenAI-compatible embedding adapter 只处理文本，不会把文件名或标签当作图像
+embedding；图像索引使用真实二进制内容转成 DashScope data URI。
+请求结构与维度选择参考
+[百炼多模态 Embedding API](https://help.aliyun.com/zh/model-studio/multimodal-embedding-api-reference)。
+自行替换 secondary embedding 模型时，该模型也必须支持 1536 维输出。
+每个向量还记录 `embedding_space`（adapter + model + 维度）；检索只比较同一
+space 的查询与素材，provider 降级不会把不同模型空间的同维向量错误混排。
 
 ### API
 
@@ -147,6 +161,7 @@ provider 只返回 `marketing-ai.skill-output.v1` 原始 JSON。严格协议解�
 
 - `apps/web`：Next.js Web 与服务端 Action
 - `packages/database`：迁移、身份数据访问和强制租户隔离的数据层
+- `packages/asset-storage`：Web 与 worker 共用的租户文件存储边界
 - `packages/agent-service`：provider 契约、真实/测试 adapter 和路由降级
 - `packages/agent-worker`：独立任务领取、模型执行、重试和结果持久化
 - `packages/content-skills`：配置驱动的 Skill prompt/输出协议、素材匹配和结果组装
@@ -164,10 +179,36 @@ ADR-0001 定义的六类结构化知识库实体，而不是文件夹式文档�
 - 品牌档案、Offering、客群、活动、会员分层、素材均支持创建/读取/更新/删除
 - 所有服务端 Action 只从签名会话取得商家 ID，再进入租户绑定的数据层
 - 会员分层只存分层定义与触达场景，不包含会员个人记录或个人信息字段
-- 素材上传接受图片/视频（单文件 20 MB），默认存入 Web 进程工作目录下的
-  `.data/assets`；生产环境应通过 `ASSET_STORAGE_DIR` 指向持久化卷
+- 素材上传接受图片/视频（单文件 20 MB），默认存入仓库级
+  `.data/assets`，确保 Web 与 worker 读取同一目录；生产环境应通过
+  `ASSET_STORAGE_DIR` 指向二者共享的持久化卷
 - 素材原文件只能通过带签名会话的
   `/api/knowledge-base/assets/:id/file` 读取，并再次执行租户隔离查询
+- 图片上传后只在 HTTP 请求内创建素材与 `queued` 索引任务；独立 worker
+  读取真实文件、调用多模态 embedding provider，并在同一事务内写入 pgvector、
+  完成任务和更新素材 `indexing_status`。失败会保留错误并支持重试；本地视频
+  当前会以可观察的失败状态结束（百炼视频 embedding 仅支持公网 URL）
+- 「素材」页支持自然语言语义检索，并可同时按场景与 Offering 筛选。搜索同样
+  先返回 `202` 任务，再由页面轮询结果，HTTP 请求不等待 embedding 慢调用
+
+素材检索 API：
+
+```http
+POST /api/knowledge-base/assets/search
+Content-Type: application/json
+
+{"query":"适合秋季护肤氛围的图","scene":"护理记录","offering_id":null,"limit":12}
+```
+
+返回 `202` 后轮询：
+
+```http
+GET /api/knowledge-base/assets/search/{task_id}
+GET /api/knowledge-base/assets/{asset_id}/indexing
+```
+
+检索 SQL 在 embedding 与 asset 两侧都绑定签名会话中的 `merchant_id`，再应用
+`scene` / `offering_id` filter 和 pgvector cosine 相似度排序。
 
 美业 v1 配置位于
 `packages/vertical-packs/config/beauty-v1.json`，包含 Offering 字段模板、
@@ -262,8 +303,9 @@ COMPOSITION_VERIFY_BASE_URL=http://127.0.0.1:3019 \
 ## PostgreSQL 集成验证
 
 数据库集成测试默认跳过；先对测试数据库执行迁移，再提供
-`TEST_DATABASE_URL` 即可运行真实六实体 CRUD、双租户隔离，以及朋友圈
-`知识库 → queued → worker → 合规 → 结构化预览` tracer bullet：
+`TEST_DATABASE_URL` 即可运行真实六实体 CRUD、双租户隔离、朋友圈
+`知识库 → queued → worker → 合规 → 结构化预览` tracer bullet，以及
+「真实图片落盘 → worker → pgvector → 中文语义检索」验证：
 
 ```bash
 DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai pnpm db:migrate

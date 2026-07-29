@@ -191,11 +191,12 @@ export async function createAssetAction(formData: FormData): Promise<void> {
     file,
   );
   try {
-    await tenant.knowledgeBase.createAsset({
+    await tenant.knowledgeBase.createAssetAndQueueIndex(session.memberId, {
       ...metadata,
       byteSize: file.size,
       mimeType: file.type,
-      originalName: file.name.replaceAll(/[^\p{L}\p{N}._ -]/gu, "").slice(0, 200) ||
+      originalName:
+        file.name.replaceAll(/[^\p{L}\p{N}._ -]/gu, "").slice(0, 200) ||
         "asset",
       storageKey,
     });
@@ -241,6 +242,16 @@ export async function deleteAssetAction(id: string): Promise<void> {
   }
   await removeAssetFile(deleted.storageKey);
   refreshAndRedirect("asset", "deleted");
+}
+
+export async function retryAssetIndexAction(id: string): Promise<void> {
+  const recordId = parseOrRedirect("asset", () => parseRecordId(id));
+  const { session, tenant } = await requireTenantContext();
+  const asset = await tenant.knowledgeBase.retryAssetIndex(
+    recordId,
+    session.memberId,
+  );
+  refreshAndRedirect("asset", asset ? "saved" : "not-found");
 }
 
 export async function deleteEntityAction(

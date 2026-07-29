@@ -1,17 +1,136 @@
 import { ProviderError } from "./errors";
+import sharp from "sharp";
 import type {
   EmbeddingProvider,
   ImageProvider,
   TextProvider,
 } from "./types";
 
-function stableVector(text: string): number[] {
-  let hash = 2166136261;
-  for (const character of text) {
-    hash ^= character.codePointAt(0) ?? 0;
-    hash = Math.imul(hash, 16777619);
+const FEATURE_COUNT = 12;
+
+function repeatedVector(features: readonly number[], dimensions: number) {
+  const vector = Array.from(
+    { length: dimensions },
+    (_, index) => features[index % FEATURE_COUNT] ?? 0,
+  );
+  const magnitude = Math.sqrt(
+    vector.reduce((sum, value) => sum + value * value, 0),
+  );
+  return vector.map((value) => value / (magnitude || 1));
+}
+
+function includesAny(text: string, terms: readonly string[]): boolean {
+  return terms.some((term) => text.includes(term));
+}
+
+function textFeatures(value: string): number[] {
+  const text = value.toLowerCase();
+  const autumn = includesAny(text, ["秋", "autumn", "fall"]);
+  const skincare = includesAny(text, [
+    "护肤",
+    "皮肤",
+    "美容",
+    "面部",
+    "skincare",
+    "skin",
+    "beauty",
+  ]);
+  const warm = autumn ||
+    includesAny(text, ["暖", "金", "橙", "棕", "warm", "amber", "orange"]);
+  const cool = includesAny(text, [
+    "清凉",
+    "蓝",
+    "冷色",
+    "cool",
+    "blue",
+    "summer",
+    "夏",
+  ]);
+  const nature = includesAny(text, ["自然", "绿", "植物", "nature", "green"]);
+  const clean = skincare ||
+    includesAny(text, ["洁净", "清透", "干净", "clean", "fresh"]);
+  if (warm) {
+    return [
+      0.86,
+      0.54,
+      0.29,
+      1,
+      0,
+      skincare ? 1 : 0.55,
+      0.62,
+      0.18,
+      0.7,
+      nature ? 0.8 : 0.2,
+      clean ? 0.8 : 0.3,
+      0.1,
+    ];
   }
-  return [hash / 0xffffffff, text.length / 1000, 1];
+  if (cool) {
+    return [
+      0.25,
+      0.56,
+      0.9,
+      0,
+      1,
+      skincare ? 0.45 : 0.15,
+      0.58,
+      0.2,
+      0.72,
+      nature ? 0.8 : 0.25,
+      clean ? 0.9 : 0.45,
+      0.1,
+    ];
+  }
+  return [
+    nature ? 0.35 : 0.5,
+    nature ? 0.82 : 0.5,
+    0.42,
+    0.2,
+    0.2,
+    skincare ? 0.9 : 0.2,
+    0.55,
+    0.3,
+    0.35,
+    nature ? 1 : 0.2,
+    clean ? 0.85 : 0.35,
+    0.5,
+  ];
+}
+
+async function imageFeatures(data: Uint8Array): Promise<number[]> {
+  const statistics = await sharp(data).stats();
+  if (statistics.channels.length < 3) {
+    throw new ProviderError(
+      "Deterministic provider requires an RGB image",
+      "UNSUPPORTED_EMBEDDING_INPUT",
+      false,
+    );
+  }
+  const [red, green, blue] = statistics.channels.map(
+    (channel) => channel.mean / 255,
+  );
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const brightness = (red + green + blue) / 3;
+  const skinDistance = Math.sqrt(
+    (red - 0.82) ** 2 + (green - 0.56) ** 2 + (blue - 0.34) ** 2,
+  );
+  return [
+    red,
+    green,
+    blue,
+    Math.max(0, red - blue),
+    Math.max(0, blue - red),
+    Math.max(0, 1 - skinDistance / 0.9),
+    brightness,
+    1 - brightness,
+    maximum - minimum,
+    green,
+    1 - (statistics.channels[0].stdev +
+      statistics.channels[1].stdev +
+      statistics.channels[2].stdev) / (3 * 128),
+    0.1,
+  ];
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -195,7 +314,19 @@ export class DeterministicEmbeddingProvider implements EmbeddingProvider {
   constructor(readonly id = "test-embedding") {}
 
   async embed(request: Parameters<EmbeddingProvider["embed"]>[0]) {
-    return { embeddings: request.texts.map(stableVector) };
+    return {
+      embeddingSpace: `deterministic-visual-v1:${request.dimensions}`,
+      embeddings: await Promise.all(
+        request.inputs.map(async (input) =>
+          repeatedVector(
+            input.type === "text"
+              ? textFeatures(input.text)
+              : await imageFeatures(input.data),
+            request.dimensions,
+          ),
+        ),
+      ),
+    };
   }
 }
 

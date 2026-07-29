@@ -12,6 +12,7 @@ import type {
   ProviderAttemptRecorder,
   ProviderAttemptStart,
 } from "./types";
+import { EMBEDDING_DIMENSIONS } from "./types";
 
 class MemoryAttempts implements ProviderAttemptRecorder {
   readonly finished = new Map<string, ProviderAttemptFinish>();
@@ -92,7 +93,10 @@ describe("ProviderRouter", () => {
       router.execute({
         request: {
           capability: "embedding",
-          request: { texts: ["asset"] },
+          request: {
+            dimensions: EMBEDDING_DIMENSIONS,
+            inputs: [{ text: "asset", type: "text" }],
+          },
         },
         taskAttempt: 1,
         taskId: "task-embedding",

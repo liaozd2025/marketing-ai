@@ -27,8 +27,10 @@ import {
   saveCampaignAction,
   saveMemberSegmentAction,
   saveOfferingAction,
+  retryAssetIndexAction,
   updateAssetAction,
 } from "./actions";
+import { AssetSemanticSearch } from "./asset-search";
 
 interface KnowledgeRecords {
   readonly assets: readonly Asset[];
@@ -671,95 +673,124 @@ function AssetSection({
   assets,
   editing,
   offerings,
+  scenes,
 }: {
   readonly assets: readonly Asset[];
   readonly editing: Asset | null;
   readonly offerings: readonly Offering[];
+  readonly scenes: readonly string[];
 }) {
   return (
-    <div className="kb-detail-grid">
-      <div className="record-list">
-        <h3>已上传素材</h3>
-        {assets.length ? (
-          assets.map((asset) => (
-            <article className="record-card" key={asset.id}>
-              <div>
-                <div className="asset-title">
-                  <h4>{asset.originalName}</h4>
-                  <span className="real-badge">实拍</span>
-                  {asset.isEffectImage ? (
-                    <span className="effect-badge">效果类图</span>
-                  ) : null}
+    <>
+      <AssetSemanticSearch
+        offerings={offerings.map(({ id, name }) => ({ id, name }))}
+        scenes={scenes}
+      />
+      <div className="kb-detail-grid">
+        <div className="record-list">
+          <h3>已上传素材</h3>
+          {assets.length ? (
+            assets.map((asset) => (
+              <article className="record-card" key={asset.id}>
+                <div>
+                  <div className="asset-title">
+                    <h4>{asset.originalName}</h4>
+                    <span className="real-badge">实拍</span>
+                    {asset.isEffectImage ? (
+                      <span className="effect-badge">效果类图</span>
+                    ) : null}
+                  </div>
+                  <p>
+                    {asset.scene} ·{" "}
+                    {(asset.byteSize / 1024 / 1024).toFixed(1)} MB
+                  </p>
+                  <p className={`index-status ${asset.indexingStatus}`}>
+                    向量索引：
+                    {{
+                      failed: "失败",
+                      not_indexed: "待提交",
+                      queued: "排队中",
+                      running: "处理中",
+                      succeeded: "已完成",
+                    }[asset.indexingStatus]}
+                    {asset.indexingError ? ` · ${asset.indexingError}` : ""}
+                  </p>
+                  <div className="record-card-footer">
+                    <Link
+                      className="text-button"
+                      href={`/api/knowledge-base/assets/${asset.id}/file`}
+                      target="_blank"
+                    >
+                      查看原文件
+                    </Link>
+                    <form action={deleteAssetAction.bind(null, asset.id)}>
+                      <button className="danger-link" type="submit">
+                        删除
+                      </button>
+                    </form>
+                    {asset.indexingStatus === "failed" ||
+                    asset.indexingStatus === "not_indexed" ? (
+                      <form action={retryAssetIndexAction.bind(null, asset.id)}>
+                        <button className="text-button" type="submit">
+                          重试索引
+                        </button>
+                      </form>
+                    ) : null}
+                  </div>
                 </div>
-                <p>
-                  {asset.scene} · {(asset.byteSize / 1024 / 1024).toFixed(1)} MB
-                </p>
-                <div className="record-card-footer">
-                  <Link
-                    className="text-button"
-                    href={`/api/knowledge-base/assets/${asset.id}/file`}
-                    target="_blank"
-                  >
-                    查看原文件
-                  </Link>
-                  <form action={deleteAssetAction.bind(null, asset.id)}>
-                    <button className="danger-link" type="submit">
-                      删除
-                    </button>
-                  </form>
-                </div>
-              </div>
-              <Link
-                className="text-button"
-                href={`/workspace/knowledge-base?section=asset&edit=${asset.id}`}
-              >
-                编辑标签
-              </Link>
-            </article>
-          ))
+                <Link
+                  className="text-button"
+                  href={`/workspace/knowledge-base?section=asset&edit=${asset.id}`}
+                >
+                  编辑标签
+                </Link>
+              </article>
+            ))
+          ) : (
+            <EmptyState label="素材" />
+          )}
+        </div>
+
+        {editing ? (
+          <form
+            action={updateAssetAction.bind(null, editing.id)}
+            className="kb-form"
+          >
+            <div>
+              <p className="eyebrow">仅更新结构化元数据</p>
+              <h3>编辑素材标签</h3>
+              <p className="form-note">{editing.originalName}</p>
+            </div>
+            <AssetMetadataFields asset={editing} offerings={offerings} />
+            <FormActions
+              cancelHref="/workspace/knowledge-base?section=asset"
+              isEditing
+            />
+          </form>
         ) : (
-          <EmptyState label="素材" />
+          <form action={createAssetAction} className="kb-form">
+            <div>
+              <p className="eyebrow">真实上传</p>
+              <h3>上传实拍素材</h3>
+              <p className="form-note">
+                支持图片或视频，单文件不超过 20
+                MB；文件受签名会话和租户隔离保护。
+              </p>
+            </div>
+            <Field label="素材文件">
+              <input
+                accept="image/*,video/*"
+                name="file"
+                required
+                type="file"
+              />
+            </Field>
+            <AssetMetadataFields offerings={offerings} />
+            <FormActions isEditing={false} />
+          </form>
         )}
       </div>
-
-      {editing ? (
-        <form
-          action={updateAssetAction.bind(null, editing.id)}
-          className="kb-form"
-        >
-          <div>
-            <p className="eyebrow">仅更新结构化元数据</p>
-            <h3>编辑素材标签</h3>
-            <p className="form-note">{editing.originalName}</p>
-          </div>
-          <AssetMetadataFields asset={editing} offerings={offerings} />
-          <FormActions
-            cancelHref="/workspace/knowledge-base?section=asset"
-            isEditing
-          />
-        </form>
-      ) : (
-        <form action={createAssetAction} className="kb-form">
-          <div>
-            <p className="eyebrow">真实上传</p>
-            <h3>上传实拍素材</h3>
-            <p className="form-note">
-              支持图片或视频，单文件不超过 20 MB；文件受签名会话和租户隔离保护。
-            </p>
-          </div>
-          <Field label="素材文件">
-            <input
-              accept="image/*,video/*"
-              name="file"
-              required
-              type="file"
-            />
-          </Field>
-          <AssetMetadataFields offerings={offerings} />
-          <FormActions isEditing={false} />
-        </form>
-      )}
-    </div>
+    </>
   );
 }
 
@@ -880,6 +911,14 @@ export function KnowledgeEntitySection({
       assets={records.assets}
       editing={records.assets.find((asset) => asset.id === editId) ?? null}
       offerings={records.offerings}
+      scenes={[
+        ...new Set(
+          [
+            ...records.assets.map((asset) => asset.scene),
+            ...pack.scenarioVocabulary.flatMap((scenario) => scenario.terms),
+          ].filter(Boolean),
+        ),
+      ]}
     />
   );
 }

@@ -11,6 +11,7 @@ import type {
   AgentTaskView,
   Conversation,
   ConversationMessage,
+  SubmitAssetSearchInput,
   SubmitAgentTaskInput,
   SubmittedAgentTask,
 } from "./agent-types";
@@ -179,6 +180,55 @@ export class TenantAgentDataAccess {
     } finally {
       client.release();
     }
+  }
+
+  async submitAssetSearch(
+    memberId: string,
+    input: SubmitAssetSearchInput,
+  ): Promise<SubmittedAgentTask> {
+    if (input.offeringId) {
+      const offering = await this.pool.query(
+        `SELECT 1
+         FROM offerings
+         WHERE merchant_id = $1 AND id = $2`,
+        [this.merchantId, input.offeringId],
+      );
+      if (!offering.rowCount) {
+        throw new Error("Offering was not found for this merchant");
+      }
+    }
+    const task = await this.pool.query<{ id: string }>(
+      `INSERT INTO agent_tasks
+         (merchant_id, created_by_member_id, capability, input)
+       VALUES (
+         $1,
+         $2,
+         'embedding',
+         jsonb_build_object(
+           'purpose', 'asset-search',
+           'texts', jsonb_build_array($3::text),
+           'filters', jsonb_build_object(
+             'limit', $4::integer,
+             'offeringId', $5::text,
+             'scene', $6::text
+           )
+         )
+       )
+       RETURNING id`,
+      [
+        this.merchantId,
+        memberId,
+        input.query,
+        input.limit,
+        input.offeringId,
+        input.scene,
+      ],
+    );
+    return {
+      conversationId: null,
+      id: task.rows[0].id,
+      status: "queued",
+    };
   }
 
   async getTask(taskId: string): Promise<AgentTaskView | null> {

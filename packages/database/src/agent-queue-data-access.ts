@@ -7,9 +7,12 @@ import {
   toClaimedAgentTask,
 } from "./agent-row-mappers";
 import type {
+  AssetEmbeddingSource,
+  AssetIndexTaskInput,
   ClaimedAgentTask,
   ConversationMessage,
 } from "./agent-types";
+import { embeddingVectorLiteral } from "./embedding";
 
 interface AttemptMerchantRow extends QueryResultRow {
   id: string;
@@ -20,6 +23,46 @@ interface ConversationMessageRow extends QueryResultRow {
   created_at: Date;
   id: string;
   role: "user" | "assistant";
+}
+
+interface AssetEmbeddingSourceRow extends QueryResultRow {
+  asset_id: string;
+  mime_type: string;
+  storage_key: string;
+}
+
+function assetIndexInput(
+  task: ClaimedAgentTask,
+): AssetIndexTaskInput | null {
+  const input = task.input;
+  return "purpose" in input &&
+    input.purpose === "asset-index" &&
+    "assetId" in input &&
+    typeof input.assetId === "string"
+    ? input
+    : null;
+}
+
+function assetEmbeddingResult(result: unknown): {
+  embeddingSpace: string;
+  vector: string;
+} {
+  if (
+    typeof result !== "object" ||
+    result === null ||
+    !("embeddingSpace" in result) ||
+    typeof result.embeddingSpace !== "string" ||
+    !result.embeddingSpace ||
+    !("embeddings" in result) ||
+    !Array.isArray(result.embeddings) ||
+    result.embeddings.length !== 1
+  ) {
+    throw new Error("Asset indexing must return exactly one embedding");
+  }
+  return {
+    embeddingSpace: result.embeddingSpace,
+    vector: embeddingVectorLiteral(result.embeddings[0]),
+  };
 }
 
 export class AgentQueueDataAccess implements ProviderAttemptRecorder {
@@ -34,23 +77,39 @@ export class AgentQueueDataAccess implements ProviderAttemptRecorder {
          ORDER BY available_at, created_at
          FOR UPDATE SKIP LOCKED
          LIMIT 1
+       ),
+       claimed_task AS (
+         UPDATE agent_tasks task
+         SET
+           status = 'running',
+           attempt_count = task.attempt_count + 1,
+           locked_at = now(),
+           locked_by = $1,
+           started_at = COALESCE(task.started_at, now()),
+           updated_at = now(),
+           error_code = NULL,
+           error_message = NULL
+         FROM next_task
+         WHERE task.id = next_task.id
+         RETURNING task.*
+       ),
+       mark_asset AS (
+         UPDATE assets asset
+         SET
+           indexing_status = 'running',
+           indexing_error = NULL,
+           updated_at = now()
+         FROM claimed_task task
+         WHERE task.input ->> 'purpose' = 'asset-index'
+           AND asset.merchant_id = task.merchant_id
+           AND asset.indexing_task_id = task.id
+           AND asset.id = (task.input ->> 'assetId')::uuid
        )
-       UPDATE agent_tasks task
-       SET
-         status = 'running',
-         attempt_count = task.attempt_count + 1,
-         locked_at = now(),
-         locked_by = $1,
-         started_at = COALESCE(task.started_at, now()),
-         updated_at = now(),
-         error_code = NULL,
-         error_message = NULL
-       FROM next_task
-       WHERE task.id = next_task.id
-       RETURNING ${agentTaskColumns
+       SELECT ${agentTaskColumns
          .split(",")
-         .map((column) => `task.${column.trim()}`)
-         .join(", ")}`,
+         .map((column) => `claimed_task.${column.trim()}`)
+         .join(", ")}
+       FROM claimed_task`,
       [workerId],
     );
     return result.rows[0] ? toClaimedAgentTask(result.rows[0]) : null;
@@ -77,6 +136,36 @@ export class AgentQueueDataAccess implements ProviderAttemptRecorder {
     }));
   }
 
+  async getAssetEmbeddingSource(
+    task: ClaimedAgentTask,
+  ): Promise<AssetEmbeddingSource | null> {
+    const input = assetIndexInput(task);
+    if (!input) {
+      return null;
+    }
+    const result = await this.pool.query<AssetEmbeddingSourceRow>(
+      `SELECT asset.id AS asset_id, asset.mime_type, asset.storage_key
+       FROM assets asset
+       INNER JOIN agent_tasks queued_task
+         ON queued_task.merchant_id = asset.merchant_id
+        AND queued_task.id = asset.indexing_task_id
+       WHERE asset.merchant_id = $1
+         AND asset.id = $2
+         AND asset.indexing_task_id = $3
+         AND queued_task.status = 'running'
+         AND queued_task.locked_by IS NOT NULL`,
+      [task.merchantId, input.assetId, task.id],
+    );
+    const source = result.rows[0];
+    return source
+      ? {
+          assetId: source.asset_id,
+          mimeType: source.mime_type,
+          storageKey: source.storage_key,
+        }
+      : null;
+  }
+
   async completeTask(
     task: ClaimedAgentTask,
     workerId: string,
@@ -94,14 +183,91 @@ export class AgentQueueDataAccess implements ProviderAttemptRecorder {
            locked_by = NULL,
            updated_at = now(),
            completed_at = now()
-         WHERE id = $1 AND status = 'running' AND locked_by = $2`,
-        [task.id, workerId, JSON.stringify(result)],
+         WHERE id = $1
+           AND merchant_id = $4
+           AND status = 'running'
+           AND locked_by = $2`,
+        [
+          task.id,
+          workerId,
+          JSON.stringify(result),
+          task.merchantId,
+        ],
       );
       if (updated.rowCount !== 1) {
         throw new Error("Task lease was lost before completion");
       }
 
-      if (
+      const assetInput = assetIndexInput(task);
+      if (assetInput) {
+        const embeddingResult = assetEmbeddingResult(result);
+        const embedded = await client.query(
+          `INSERT INTO knowledge_item_embeddings
+             (
+               merchant_id, source_type, source_id, content, embedding,
+               embedding_space, task_id, provider_id
+             )
+           SELECT
+             asset.merchant_id,
+             'asset',
+             asset.id,
+             'visual-image',
+             $4::vector,
+             $5,
+             $3,
+             (
+               SELECT provider_id
+               FROM provider_attempts
+               WHERE merchant_id = $1
+                 AND task_id = $3
+                 AND task_attempt = $6
+                 AND status = 'succeeded'
+               ORDER BY route_position
+               LIMIT 1
+             )
+           FROM assets asset
+           WHERE asset.merchant_id = $1
+             AND asset.id = $2
+             AND asset.indexing_task_id = $3
+           ON CONFLICT (merchant_id, source_type, source_id)
+           DO UPDATE SET
+             content = EXCLUDED.content,
+             embedding = EXCLUDED.embedding,
+             embedding_space = EXCLUDED.embedding_space,
+             task_id = EXCLUDED.task_id,
+             provider_id = EXCLUDED.provider_id,
+             updated_at = now()
+           RETURNING id`,
+          [
+            task.merchantId,
+            assetInput.assetId,
+            task.id,
+            embeddingResult.vector,
+            embeddingResult.embeddingSpace,
+            task.attemptCount,
+          ],
+        );
+        if (embedded.rowCount !== 1) {
+          throw new Error(
+            "Asset disappeared or was superseded before indexing completed",
+          );
+        }
+        const indexed = await client.query(
+          `UPDATE assets
+           SET
+             indexing_status = 'succeeded',
+             indexing_error = NULL,
+             indexed_at = now(),
+             updated_at = now()
+           WHERE merchant_id = $1
+             AND id = $2
+             AND indexing_task_id = $3`,
+          [task.merchantId, assetInput.assetId, task.id],
+        );
+        if (indexed.rowCount !== 1) {
+          throw new Error("Asset indexing state was superseded");
+        }
+      } else if (
         task.capability === "text" &&
         task.conversationId &&
         typeof result === "object" &&
@@ -139,27 +305,68 @@ export class AgentQueueDataAccess implements ProviderAttemptRecorder {
     const retry = error.retryable && task.attemptCount < task.maxAttempts;
     const status = retry ? "queued" : "failed";
     const delaySeconds = Math.min(2 ** task.attemptCount, 30);
-    const result = await this.pool.query(
-      `UPDATE agent_tasks
-       SET
-         status = $3,
-         error_code = $4,
-         error_message = $5,
-         available_at = CASE
-           WHEN $3 = 'queued' THEN now() + ($6 * interval '1 second')
-           ELSE available_at
-         END,
-         locked_at = NULL,
-         locked_by = NULL,
-         updated_at = now(),
-         completed_at = CASE WHEN $3 = 'failed' THEN now() ELSE NULL END
-       WHERE id = $1 AND status = 'running' AND locked_by = $2`,
-      [task.id, workerId, status, error.code, error.message, delaySeconds],
-    );
-    if (result.rowCount !== 1) {
-      throw new Error("Task lease was lost before failure handling");
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await client.query(
+        `UPDATE agent_tasks
+         SET
+           status = $3,
+           error_code = $4,
+           error_message = $5,
+           available_at = CASE
+             WHEN $3 = 'queued' THEN now() + ($6 * interval '1 second')
+             ELSE available_at
+           END,
+           locked_at = NULL,
+           locked_by = NULL,
+           updated_at = now(),
+           completed_at = CASE WHEN $3 = 'failed' THEN now() ELSE NULL END
+         WHERE id = $1
+           AND merchant_id = $7
+           AND status = 'running'
+           AND locked_by = $2`,
+        [
+          task.id,
+          workerId,
+          status,
+          error.code,
+          error.message,
+          delaySeconds,
+          task.merchantId,
+        ],
+      );
+      if (result.rowCount !== 1) {
+        throw new Error("Task lease was lost before failure handling");
+      }
+      const assetInput = assetIndexInput(task);
+      if (assetInput) {
+        await client.query(
+          `UPDATE assets
+           SET
+             indexing_status = $4,
+             indexing_error = $5,
+             updated_at = now()
+           WHERE merchant_id = $1
+             AND id = $2
+             AND indexing_task_id = $3`,
+          [
+            task.merchantId,
+            assetInput.assetId,
+            task.id,
+            status,
+            error.message,
+          ],
+        );
+      }
+      await client.query("COMMIT");
+      return status;
+    } catch (failure) {
+      await client.query("ROLLBACK");
+      throw failure;
+    } finally {
+      client.release();
     }
-    return status;
   }
 
   async recoverStaleTasks(leaseSeconds = 600): Promise<number> {
@@ -183,6 +390,19 @@ export class AgentQueueDataAccess implements ProviderAttemptRecorder {
        WHERE status = 'running'
          AND locked_at < now() - ($1 * interval '1 second')`,
       [leaseSeconds],
+    );
+    await this.pool.query(
+      `UPDATE assets asset
+       SET
+         indexing_status = task.status,
+         indexing_error = task.error_message,
+         updated_at = now()
+       FROM agent_tasks task
+       WHERE task.input ->> 'purpose' = 'asset-index'
+         AND task.error_code = 'WORKER_LEASE_EXPIRED'
+         AND task.merchant_id = asset.merchant_id
+         AND task.id = asset.indexing_task_id
+         AND asset.id = (task.input ->> 'assetId')::uuid`,
     );
     await this.pool.query(
       `UPDATE provider_attempts attempts

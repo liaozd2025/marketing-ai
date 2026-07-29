@@ -20,6 +20,10 @@ describe("knowledge-base completeness signal", () => {
         {
           ...record,
           byteSize: 100,
+          indexedAt: null,
+          indexingError: null,
+          indexingStatus: "not_indexed",
+          indexingTaskId: null,
           isEffectImage: true,
           isReal: true,
           mimeType: "image/jpeg",

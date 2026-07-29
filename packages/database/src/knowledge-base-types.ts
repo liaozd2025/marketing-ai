@@ -47,6 +47,10 @@ export interface MemberSegment extends TenantRecord {
 
 export interface Asset extends TenantRecord {
   readonly byteSize: number;
+  readonly indexedAt: Date | null;
+  readonly indexingError: string | null;
+  readonly indexingStatus: AssetIndexingStatus;
+  readonly indexingTaskId: string | null;
   readonly isEffectImage: boolean;
   readonly isReal: true;
   readonly mimeType: string;
@@ -55,6 +59,24 @@ export interface Asset extends TenantRecord {
   readonly originalName: string;
   readonly scene: string;
   readonly storageKey: string;
+}
+
+export type AssetIndexingStatus =
+  | "not_indexed"
+  | "queued"
+  | "running"
+  | "succeeded"
+  | "failed";
+
+export interface AssetSearchFilters {
+  readonly limit: number;
+  readonly offeringId: string | null;
+  readonly scene: string | null;
+}
+
+export interface AssetSearchResult {
+  readonly asset: Asset;
+  readonly similarity: number;
 }
 
 export interface BrandProfileInput {

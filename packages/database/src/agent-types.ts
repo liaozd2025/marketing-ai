@@ -1,9 +1,32 @@
 export type AgentCapability = "text" | "image" | "embedding";
 export type AgentTaskStatus = "queued" | "running" | "succeeded" | "failed";
 
+export interface AssetIndexTaskInput {
+  readonly assetId: string;
+  readonly purpose: "asset-index";
+}
+
+export interface AssetEmbeddingSource {
+  readonly assetId: string;
+  readonly mimeType: string;
+  readonly storageKey: string;
+}
+
+export interface AssetSearchTaskInput {
+  readonly filters: {
+    readonly limit: number;
+    readonly offeringId: string | null;
+    readonly scene: string | null;
+  };
+  readonly purpose: "asset-search";
+  readonly texts: readonly [string];
+}
+
 export type AgentTaskInput =
   | { readonly prompt: string }
-  | { readonly texts: readonly string[] }
+  | { readonly purpose?: "generic"; readonly texts: readonly string[] }
+  | AssetIndexTaskInput
+  | AssetSearchTaskInput
   | SkillTaskInput;
 
 export interface AgentTask {
@@ -73,6 +96,13 @@ export interface SubmittedAgentTask {
   readonly conversationId: string | null;
   readonly id: string;
   readonly status: "queued";
+}
+
+export interface SubmitAssetSearchInput {
+  readonly limit: number;
+  readonly offeringId: string | null;
+  readonly query: string;
+  readonly scene: string | null;
 }
 
 export interface AgentTaskView extends AgentTask {

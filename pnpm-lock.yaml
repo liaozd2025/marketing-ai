@@ -32,6 +32,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@marketing-ai/asset-storage':
+        specifier: workspace:*
+        version: link:../../packages/asset-storage
       '@marketing-ai/content-skills':
         specifier: workspace:*
         version: link:../../packages/content-skills
@@ -73,13 +76,20 @@ importers:
         specifier: ^4.20.6
         version: 4.23.1
 
-  packages/agent-service: {}
+  packages/agent-service:
+    dependencies:
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
 
   packages/agent-worker:
     dependencies:
       '@marketing-ai/agent-service':
         specifier: workspace:*
         version: link:../agent-service
+      '@marketing-ai/asset-storage':
+        specifier: workspace:*
+        version: link:../asset-storage
       '@marketing-ai/content-skills':
         specifier: workspace:*
         version: link:../content-skills
@@ -90,9 +100,20 @@ importers:
         specifier: workspace:*
         version: link:../vertical-packs
     devDependencies:
+      '@types/pg':
+        specifier: ^8.15.5
+        version: 8.20.0
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
       tsx:
         specifier: ^4.20.6
         version: 4.23.1
+
+  packages/asset-storage: {}
 
   packages/compliance: {}
 
@@ -3099,8 +3120,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.34.5':
     optionalDependencies:
@@ -5199,7 +5219,6 @@ snapshots:
       '@img/sharp-win32-arm64': 0.34.5
       '@img/sharp-win32-ia32': 0.34.5
       '@img/sharp-win32-x64': 0.34.5
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

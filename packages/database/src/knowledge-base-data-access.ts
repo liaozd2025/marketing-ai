@@ -3,6 +3,8 @@ import type { QueryResultRow } from "pg";
 import type {
   Asset,
   AssetInput,
+  AssetSearchFilters,
+  AssetSearchResult,
   Audience,
   AudienceInput,
   BrandProfile,
@@ -14,6 +16,7 @@ import type {
   Offering,
   OfferingInput,
 } from "./knowledge-base-types";
+import { embeddingVectorLiteral } from "./embedding";
 import type { SqlExecutor, TenantId } from "./types";
 
 interface RecordRow extends QueryResultRow {
@@ -63,6 +66,10 @@ interface MemberSegmentRow extends RecordRow {
 
 interface AssetRow extends RecordRow {
   byte_size: number | string;
+  indexed_at: Date | null;
+  indexing_error: string | null;
+  indexing_status: Asset["indexingStatus"];
+  indexing_task_id: string | null;
   is_effect_image: boolean;
   is_real: true;
   mime_type: string;
@@ -71,6 +78,10 @@ interface AssetRow extends RecordRow {
   original_name: string;
   scene: string;
   storage_key: string;
+}
+
+interface AssetSearchRow extends AssetRow {
+  similarity: number | string;
 }
 
 function base(row: RecordRow) {
@@ -139,6 +150,10 @@ function toAsset(row: AssetRow): Asset {
   return {
     ...base(row),
     byteSize: Number(row.byte_size),
+    indexedAt: row.indexed_at,
+    indexingError: row.indexing_error,
+    indexingStatus: row.indexing_status,
+    indexingTaskId: row.indexing_task_id,
     isEffectImage: row.is_effect_image,
     isReal: row.is_real,
     mimeType: row.mime_type,
@@ -490,7 +505,8 @@ export class KnowledgeBaseDataAccess {
     const result = await this.executor.query<AssetRow>(
       `SELECT id, merchant_id, offering_id, original_name, mime_type,
               byte_size, storage_key, scene, notes, is_real,
-              is_effect_image, created_at, updated_at
+              is_effect_image, indexing_status, indexing_task_id,
+              indexing_error, indexed_at, created_at, updated_at
        FROM assets
        WHERE merchant_id = $1
        ORDER BY updated_at DESC, id`,
@@ -503,7 +519,8 @@ export class KnowledgeBaseDataAccess {
     const result = await this.executor.query<AssetRow>(
       `SELECT id, merchant_id, offering_id, original_name, mime_type,
               byte_size, storage_key, scene, notes, is_real,
-              is_effect_image, created_at, updated_at
+              is_effect_image, indexing_status, indexing_task_id,
+              indexing_error, indexed_at, created_at, updated_at
        FROM assets
        WHERE merchant_id = $1 AND id = $2`,
       [this.merchantId, id],
@@ -519,7 +536,8 @@ export class KnowledgeBaseDataAccess {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true, $9)
        RETURNING id, merchant_id, offering_id, original_name, mime_type,
                  byte_size, storage_key, scene, notes, is_real,
-                 is_effect_image, created_at, updated_at`,
+                 is_effect_image, indexing_status, indexing_task_id,
+                 indexing_error, indexed_at, created_at, updated_at`,
       [
         this.merchantId,
         input.offeringId,
@@ -530,6 +548,60 @@ export class KnowledgeBaseDataAccess {
         input.scene,
         input.notes,
         input.isEffectImage,
+      ],
+    );
+    return toAsset(result.rows[0]);
+  }
+
+  async createAssetAndQueueIndex(
+    memberId: string,
+    input: AssetInput,
+  ): Promise<Asset> {
+    const result = await this.executor.query<AssetRow>(
+      `WITH ids AS (
+         SELECT gen_random_uuid() AS asset_id, gen_random_uuid() AS task_id
+       ),
+       new_task AS (
+         INSERT INTO agent_tasks
+           (id, merchant_id, created_by_member_id, capability, input)
+         SELECT
+           task_id,
+           $1,
+           $10,
+           'embedding',
+           jsonb_build_object('purpose', 'asset-index', 'assetId', asset_id)
+         FROM ids
+         RETURNING id, merchant_id
+       ),
+       new_asset AS (
+         INSERT INTO assets
+           (
+             id, merchant_id, offering_id, original_name, mime_type,
+             byte_size, storage_key, scene, notes, is_real, is_effect_image,
+             indexing_status, indexing_task_id
+           )
+         SELECT
+           ids.asset_id, $1, $2, $3, $4, $5, $6, $7, $8, true, $9,
+           'queued', task.id
+         FROM ids, new_task task
+         RETURNING *
+       )
+       SELECT
+         id, merchant_id, offering_id, original_name, mime_type, byte_size,
+         storage_key, scene, notes, is_real, is_effect_image, indexing_status,
+         indexing_task_id, indexing_error, indexed_at, created_at, updated_at
+       FROM new_asset`,
+      [
+        this.merchantId,
+        input.offeringId,
+        input.originalName,
+        input.mimeType,
+        input.byteSize,
+        input.storageKey,
+        input.scene,
+        input.notes,
+        input.isEffectImage,
+        memberId,
       ],
     );
     return toAsset(result.rows[0]);
@@ -549,7 +621,8 @@ export class KnowledgeBaseDataAccess {
        WHERE merchant_id = $1 AND id = $2
        RETURNING id, merchant_id, offering_id, original_name, mime_type,
                  byte_size, storage_key, scene, notes, is_real,
-                 is_effect_image, created_at, updated_at`,
+                 is_effect_image, indexing_status, indexing_task_id,
+                 indexing_error, indexed_at, created_at, updated_at`,
       [
         this.merchantId,
         id,
@@ -564,14 +637,137 @@ export class KnowledgeBaseDataAccess {
 
   async deleteAsset(id: string): Promise<Asset | null> {
     const result = await this.executor.query<AssetRow>(
-      `DELETE FROM assets
-       WHERE merchant_id = $1 AND id = $2
-       RETURNING id, merchant_id, offering_id, original_name, mime_type,
-                 byte_size, storage_key, scene, notes, is_real,
-                 is_effect_image, created_at, updated_at`,
+      `WITH target AS (
+         SELECT *
+         FROM assets
+         WHERE merchant_id = $1 AND id = $2
+       ),
+       cancel_task AS (
+         UPDATE agent_tasks task
+         SET
+           status = 'failed',
+           error_code = 'ASSET_DELETED',
+           error_message = 'Asset was deleted before indexing',
+           completed_at = now(),
+           updated_at = now()
+         FROM target
+         WHERE task.merchant_id = $1
+           AND task.id = target.indexing_task_id
+           AND task.status = 'queued'
+       ),
+       delete_embedding AS (
+         DELETE FROM knowledge_item_embeddings embedding
+         USING target
+         WHERE embedding.merchant_id = $1
+           AND embedding.merchant_id = target.merchant_id
+           AND embedding.source_type = 'asset'
+           AND embedding.source_id = target.id
+       )
+       DELETE FROM assets asset
+       USING target
+       WHERE asset.merchant_id = $1
+         AND asset.merchant_id = target.merchant_id
+         AND asset.id = target.id
+       RETURNING asset.id, asset.merchant_id, asset.offering_id,
+                 asset.original_name, asset.mime_type, asset.byte_size,
+                 asset.storage_key, asset.scene, asset.notes, asset.is_real,
+                 asset.is_effect_image, asset.indexing_status,
+                 asset.indexing_task_id, asset.indexing_error,
+                 asset.indexed_at, asset.created_at, asset.updated_at`,
       [this.merchantId, id],
     );
     return result.rows[0] ? toAsset(result.rows[0]) : null;
+  }
+
+  async retryAssetIndex(
+    id: string,
+    memberId: string,
+  ): Promise<Asset | null> {
+    const result = await this.executor.query<AssetRow>(
+      `WITH target AS (
+         SELECT id, merchant_id
+         FROM assets
+         WHERE merchant_id = $1
+           AND id = $2
+           AND indexing_status IN ('not_indexed', 'failed')
+         FOR UPDATE
+       ),
+       new_task AS (
+         INSERT INTO agent_tasks
+           (merchant_id, created_by_member_id, capability, input)
+         SELECT
+           merchant_id,
+           $3,
+           'embedding',
+           jsonb_build_object('purpose', 'asset-index', 'assetId', id)
+         FROM target
+         RETURNING id, merchant_id
+       )
+       UPDATE assets asset
+       SET
+         indexing_status = 'queued',
+         indexing_task_id = task.id,
+         indexing_error = NULL,
+         indexed_at = NULL,
+         updated_at = now()
+       FROM target, new_task task
+       WHERE asset.merchant_id = $1
+         AND asset.merchant_id = target.merchant_id
+         AND asset.id = target.id
+       RETURNING asset.id, asset.merchant_id, asset.offering_id,
+                 asset.original_name, asset.mime_type, asset.byte_size,
+                 asset.storage_key, asset.scene, asset.notes, asset.is_real,
+                 asset.is_effect_image, asset.indexing_status,
+                 asset.indexing_task_id, asset.indexing_error,
+                 asset.indexed_at, asset.created_at, asset.updated_at`,
+      [this.merchantId, id, memberId],
+    );
+    return result.rows[0] ? toAsset(result.rows[0]) : null;
+  }
+
+  async searchAssets(
+    embedding: readonly number[],
+    embeddingSpace: string,
+    filters: AssetSearchFilters,
+  ): Promise<AssetSearchResult[]> {
+    if (!embeddingSpace.trim()) {
+      throw new Error("Embedding space is required for asset search");
+    }
+    const vector = embeddingVectorLiteral(embedding);
+    const result = await this.executor.query<AssetSearchRow>(
+      `SELECT
+         asset.id, asset.merchant_id, asset.offering_id, asset.original_name,
+         asset.mime_type, asset.byte_size, asset.storage_key, asset.scene,
+         asset.notes, asset.is_real, asset.is_effect_image,
+         asset.indexing_status, asset.indexing_task_id, asset.indexing_error,
+         asset.indexed_at, asset.created_at, asset.updated_at,
+         1 - (embedding.embedding <=> $2::vector) AS similarity
+       FROM knowledge_item_embeddings embedding
+       INNER JOIN assets asset
+         ON asset.merchant_id = embedding.merchant_id
+        AND asset.id = embedding.source_id
+       WHERE embedding.merchant_id = $1
+         AND asset.merchant_id = $1
+         AND embedding.source_type = 'asset'
+         AND embedding.embedding_space = $3
+         AND asset.indexing_status = 'succeeded'
+         AND ($4::uuid IS NULL OR asset.offering_id = $4)
+         AND ($5::text IS NULL OR asset.scene = $5)
+       ORDER BY embedding.embedding <=> $2::vector, asset.id
+       LIMIT $6`,
+      [
+        this.merchantId,
+        vector,
+        embeddingSpace,
+        filters.offeringId,
+        filters.scene,
+        filters.limit,
+      ],
+    );
+    return result.rows.map((row) => ({
+      asset: toAsset(row),
+      similarity: Number(row.similarity),
+    }));
   }
 
   private async deleteById(

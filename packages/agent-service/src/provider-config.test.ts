@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { providerRoutesFromEnvironment } from "./provider-config";
+import { EMBEDDING_DIMENSIONS } from "./types";
 
 describe("providerRoutesFromEnvironment", () => {
   afterEach(() => {
@@ -49,9 +50,9 @@ describe("providerRoutesFromEnvironment", () => {
           JSON.stringify({ data: [{ url: "https://image.example/result" }] }),
         );
       }
-      return new Response(
-        JSON.stringify({ data: [{ embedding: [0.1, 0.2] }] }),
-      );
+      return new Response(JSON.stringify({
+        data: [{ embedding: Array(EMBEDDING_DIMENSIONS).fill(0.1) }],
+      }));
     });
     vi.stubGlobal("fetch", fetchMock);
     const routes = providerRoutesFromEnvironment({
@@ -74,7 +75,10 @@ describe("providerRoutesFromEnvironment", () => {
       messages: [{ content: "hello", role: "user" }],
     });
     await routes.image[0].generate({ prompt: "card" });
-    await routes.embedding[0].embed({ texts: ["asset"] });
+    await routes.embedding[0].embed({
+      dimensions: EMBEDDING_DIMENSIONS,
+      inputs: [{ text: "asset", type: "text" }],
+    });
 
     const calls = fetchMock.mock.calls;
     expect(calls.map(([url]) => url)).toEqual([

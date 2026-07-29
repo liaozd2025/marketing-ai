@@ -1233,6 +1233,72 @@ p {
   color: #9a5d17;
 }
 
+.asset-search-panel {
+  background: linear-gradient(135deg, #f7f5ff, #fff);
+  border: 1px solid #ded8ff;
+  border-radius: 14px;
+  display: grid;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 20px;
+}
+
+.asset-search-form {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(240px, 2fr) 1fr 1fr auto;
+}
+
+.asset-search-form input,
+.asset-search-form select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.asset-search-results {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.asset-search-results article {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+}
+
+.asset-search-results span,
+.asset-search-results a,
+.search-feedback,
+.index-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.asset-search-results a {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.search-feedback.error,
+.index-status.failed {
+  color: #a84141;
+}
+
+.index-status.succeeded {
+  color: #347144;
+}
+
+.index-status.queued,
+.index-status.running {
+  color: #7651b5;
+}
+
 @media (max-width: 760px) {
   .auth-card {
     padding: 30px 24px;
@@ -1260,6 +1326,10 @@ p {
 
   .sidebar form {
     width: 110px;
+  }
+
+  .asset-search-form {
+    grid-template-columns: 1fr;
   }
 
   .workspace-content {

@@ -143,9 +143,18 @@ export class CompatibleEmbeddingProvider implements EmbeddingProvider {
   }
 
   async embed(request: Parameters<EmbeddingProvider["embed"]>[0]) {
+    if (request.inputs.some((input) => input.type !== "text")) {
+      throw new ProviderError(
+        `${this.options.id} does not support image embedding inputs`,
+        "UNSUPPORTED_EMBEDDING_INPUT",
+        false,
+      );
+    }
     const payload = object(
       await postJson(this.options, "/embeddings", {
-        input: request.texts,
+        dimensions: request.dimensions,
+        input: request.inputs.map((input) =>
+          input.type === "text" ? input.text : ""),
         model: this.options.model,
       }),
     );
@@ -160,16 +169,23 @@ export class CompatibleEmbeddingProvider implements EmbeddingProvider {
       const embedding = object(item).embedding;
       if (
         !Array.isArray(embedding) ||
-        embedding.some((value) => typeof value !== "number")
+        embedding.length !== request.dimensions ||
+        embedding.some(
+          (value) => typeof value !== "number" || !Number.isFinite(value),
+        )
       ) {
         throw new ProviderError(
-          "Provider response contained an invalid embedding",
+          `Provider response must contain ${request.dimensions}-dimension embeddings`,
           "INVALID_PROVIDER_RESPONSE",
           false,
         );
       }
       return embedding as number[];
     });
-    return { embeddings };
+    return {
+      embeddingSpace:
+        `openai-compatible:${this.options.model}:${request.dimensions}`,
+      embeddings,
+    };
   }
 }
