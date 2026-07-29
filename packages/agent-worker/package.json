@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/run.ts",
-    "start": "tsx src/run.ts",
-    "once": "tsx src/run.ts --once",
+    "dev": "node --env-file-if-exists=../../apps/web/.env.local --import tsx --watch src/run.ts",
+    "start": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts",
+    "once": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts --once",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
