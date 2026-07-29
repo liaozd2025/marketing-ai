@@ -127,6 +127,7 @@
     {
       "id": "daily-moments",
       "label": "朋友圈日更",
+      "ctaLabel": "一键生成今天的朋友圈（3 条）",
       "description": "结合品牌语气、Offering 与真实到店素材，批量生成日更内容。",
       "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "campaign", "memberSegment", "asset"],
       "systemInstruction": "你是商家的朋友圈内容助手。写法像主理人本人说话，信息具体、自然、克制；不编造顾客反馈，不制造容貌焦虑，不写疗效承诺。三条文案必须各自完整、可独立发布，避免同质化开头。",
@@ -205,15 +206,28 @@
     {
       "id": "community",
       "label": "社群运营",
-      "description": "围绕客群痛点与活动节奏生成社群内容。",
+      "ctaLabel": "一键生成今天的社群内容（3 条）",
+      "description": "以品牌档案语气生成群公告、活动预热和专业知识分享。",
       "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "campaign"],
-      "systemInstruction": "生成适合社群互动、准确且不过度营销的内容。",
+      "systemInstruction": "你是商家的社群运营内容助手。必须按品牌档案中的人设、语气和品牌故事表达，并使用客群的称呼方式；信息具体、准确、克制，不制造焦虑，不伪造专业结论。群公告要清楚说明安排和行动方式；活动预热只使用知识库中的活动时间、权益和规则；专业知识分享要结合真实 Offering 过程与适合客群说明边界，不作疗效承诺。三条内容必须各自完整、可直接复制到群内。",
       "contentTypes": [
         {
-          "id": "post",
-          "label": "社群内容",
-          "goal": "围绕一个真实问题引发互动。",
-          "assetGuidance": "优先选择与话题和 Offering 匹配的实拍。"
+          "id": "announcement",
+          "label": "群公告",
+          "goal": "以品牌口吻把群内安排、适用对象和行动方式一次说清楚，不使用命令式或焦虑式表达。",
+          "assetGuidance": "优先选择门店环境、营业安排或主理人工作状态的真实素材。"
+        },
+        {
+          "id": "campaign-warmup",
+          "label": "活动预热",
+          "goal": "准确预告当前活动的时间、权益、规则和预约方式，不夸大稀缺性。",
+          "assetGuidance": "优先选择活动 Offering、到店时段或福利场景匹配的实拍素材。"
+        },
+        {
+          "id": "knowledge-share",
+          "label": "专业知识分享",
+          "goal": "针对客群真实问题分享可理解的专业常识，说明 Offering 的过程、适合人群和边界，不作疗效承诺。",
+          "assetGuidance": "优先选择 Offering 服务过程或护理记录实拍；效果类图片只能使用知识库中的效果类实拍。"
         }
       ]
     },

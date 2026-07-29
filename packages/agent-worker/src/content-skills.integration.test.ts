@@ -16,7 +16,7 @@ import { AgentWorker } from "./worker";
 const databaseUrl = process.env.TEST_DATABASE_URL;
 const integration = databaseUrl ? describe : describe.skip;
 
-integration("daily moments tracer bullet against PostgreSQL", () => {
+integration("configured content Skills against PostgreSQL", () => {
   const database = new Database(databaseUrl);
   let merchantAId: string;
   let memberAId: string;
@@ -185,6 +185,73 @@ integration("daily moments tracer bullet against PostgreSQL", () => {
       publishReady: false,
     });
     expect(seeding?.compliance.hits.map((hit) => hit.term)).toEqual([
+      "根治",
+      "100%有效",
+    ]);
+  });
+
+  it("runs the community preset through the same queue, runtime, provider, and compliance path", async () => {
+    const tenantA = database.agentForTenant(tenantId(merchantAId));
+    const submitted = await tenantA.submitTask(memberAId, {
+      action: "generate",
+      capability: "text",
+      intent: "准备今天的社群内容",
+      kind: "skill",
+      selectedKnowledgeTypes: ["brandProfile", "campaign"],
+      skillId: "community",
+    });
+
+    await expect(worker("community-e2e").runOnce()).resolves.toBe(true);
+    const completed = await tenantA.getTask(submitted.id);
+    const result = completed?.result as SkillRunResult;
+
+    expect(completed).toMatchObject({
+      providerAttempts: [
+        { providerId: "test-text", status: "succeeded" },
+      ],
+      status: "succeeded",
+    });
+    expect(result).toMatchObject({
+      protocolVersion: "marketing-ai.skill-result.v1",
+      skillId: "community",
+    });
+    expect(result.items.map((item) => item.contentType)).toEqual([
+      "announcement",
+      "campaign-warmup",
+      "knowledge-share",
+    ]);
+    expect(result.items.every((item) => item.publishReady)).toBe(true);
+    expect(result.items.every((item) => item.text.startsWith("姐妹们"))).toBe(
+      true,
+    );
+    expect(result.items[0]?.text).toContain("跟大家说一声群内安排");
+    expect(result.items[2]?.text).toContain("想和大家聊聊一个常见问题");
+    expect(result.items[1]?.text).toContain("提前一天预约");
+    expect(result.items[2]?.text).toContain("晚间肩颈舒缓护理");
+  });
+
+  it("blocks community copy when the shared compliance finalizer finds a prohibited term", async () => {
+    const tenantA = database.agentForTenant(tenantId(merchantAId));
+    const submitted = await tenantA.submitTask(memberAId, {
+      action: "generate",
+      capability: "text",
+      intent: "[[fixture:violation]]",
+      kind: "skill",
+      selectedKnowledgeTypes: [],
+      skillId: "community",
+    });
+    await worker("community-violation").runOnce();
+    const task = await tenantA.getTask(submitted.id);
+    const result = task?.result as SkillRunResult;
+    const knowledgeShare = result.items.find(
+      (item) => item.contentType === "knowledge-share",
+    );
+
+    expect(knowledgeShare).toMatchObject({
+      compliance: { blocked: true },
+      publishReady: false,
+    });
+    expect(knowledgeShare?.compliance.hits.map((hit) => hit.term)).toEqual([
       "根治",
       "100%有效",
     ]);

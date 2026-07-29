@@ -595,6 +595,28 @@ p {
   margin-bottom: 30px;
 }
 
+.skill-switcher {
+  background: #f3f2ef;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 22px;
+  padding: 4px;
+}
+
+.skill-switcher button {
+  background: transparent;
+  color: var(--muted);
+  min-height: 34px;
+  padding: 0 15px;
+}
+
+.skill-switcher button.active {
+  background: var(--ink);
+  color: white;
+}
+
 .content-composer {
   background: white;
   border: 1px solid var(--border);

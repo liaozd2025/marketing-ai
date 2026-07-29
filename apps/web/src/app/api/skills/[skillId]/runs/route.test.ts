@@ -125,4 +125,24 @@ describe("POST /api/skills/[skillId]/runs", () => {
     expect(rejected.status).toBe(400);
     expect(mocks.submitTask).not.toHaveBeenCalled();
   });
+
+  it("submits the configured community preset through the same async endpoint", async () => {
+    const response = await POST(
+      new Request("http://localhost/api/skills/community/runs", {
+        body: JSON.stringify({ intent: "准备今天的社群内容" }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ skillId: "community" }) },
+    );
+
+    expect(response.status).toBe(202);
+    expect(mocks.submitTask).toHaveBeenCalledWith(
+      "member-from-session",
+      expect.objectContaining({
+        capability: "text",
+        kind: "skill",
+        skillId: "community",
+      }),
+    );
+  });
 });

@@ -48,6 +48,15 @@ describe("vertical pack public interface", () => {
         expect.objectContaining({ key: "remaining_uses" }),
       ]),
     });
+    expect(pack.skillPresets[2]).toMatchObject({
+      ctaLabel: "一键生成今天的社群内容（3 条）",
+      id: "community",
+      contentTypes: [
+        { id: "announcement", label: "群公告" },
+        { id: "campaign-warmup", label: "活动预热" },
+        { id: "knowledge-share", label: "专业知识分享" },
+      ],
+    });
   });
 
   it("uses the same field configuration for validation and completeness", () => {

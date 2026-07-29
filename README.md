@@ -122,11 +122,12 @@ pnpm worker
 pnpm worker:once
 ```
 
-### 朋友圈日更 Skill
+### 配置驱动的内容 Skill
 
-登录后进入 `/workspace/content/new`。入口以知识库上下文 chips 和一个可选意图
-输入框为主，一次异步生成「人设 / 种草 / 活动」三类朋友圈。HTTP 仅把
-Skill run 写入 `agent_tasks` 并返回 `202`：
+登录后进入 `/workspace/content/new`，可在同一个内容工作台切换「朋友圈日更」
+与「社群运营」。入口以知识库上下文 chips 和一个可选意图输入框为主；朋友圈
+一次生成「人设 / 种草 / 活动」，社群一次生成「群公告 / 活动预热 /
+专业知识分享」。HTTP 仅把 Skill run 写入 `agent_tasks` 并返回 `202`：
 
 ```http
 POST /api/skills/daily-moments/runs
@@ -136,6 +137,20 @@ Content-Type: application/json
   "action": "generate",
   "intent": "今天下雨，语气松弛一点",
   "selected_knowledge_types": ["brandProfile", "offering", "asset"]
+}
+```
+
+社群运营使用完全相同的提交、任务轮询、worker runtime、provider 和合规路径，
+只把 URL 中的 Skill id 改为配置在垂类包中的 `community`：
+
+```http
+POST /api/skills/community/runs
+Content-Type: application/json
+
+{
+  "action": "generate",
+  "intent": "准备今天的社群内容",
+  "selected_knowledge_types": ["brandProfile", "offering", "audience", "campaign"]
 }
 ```
 
@@ -303,9 +318,9 @@ COMPOSITION_VERIFY_BASE_URL=http://127.0.0.1:3019 \
 ## PostgreSQL 集成验证
 
 数据库集成测试默认跳过；先对测试数据库执行迁移，再提供
-`TEST_DATABASE_URL` 即可运行真实六实体 CRUD、双租户隔离、朋友圈
-`知识库 → queued → worker → 合规 → 结构化预览` tracer bullet，以及
-「真实图片落盘 → worker → pgvector → 中文语义检索」验证：
+`TEST_DATABASE_URL` 即可运行真实六实体 CRUD、双租户隔离、朋友圈和社群共享的
+`知识库 → queued → worker → 合规 → 结构化预览` tracer bullet、会员触达
+零 PII 矩阵，以及「真实图片落盘 → worker → pgvector → 中文语义检索」验证：
 
 ```bash
 DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai pnpm db:migrate
@@ -313,8 +328,9 @@ TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketin
   pnpm --filter @marketing-ai/database --filter @marketing-ai/agent-worker test
 ```
 
-若 Web 已在 `3105` 端口连接同一测试库运行，可再验证真实签名 cookie、HTTP 202、
-轮询、跨租户 404、违规阻断和异步合规改写：
+若 Web 已在 `3105` 端口连接同一测试库运行，可再验证真实签名 cookie、
+朋友圈/社群共享 provider 与结果协议、HTTP 202、轮询、跨租户 404、违规阻断
+和异步合规改写：
 
 ```bash
 DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai \

@@ -224,6 +224,21 @@ function deterministicSkillOutput(
   const fields = asRecord(offering.fieldValues);
   const merchantName = textValue(knowledge.merchantName, "这家小店");
   const offeringName = textValue(offering.name, "到店护理");
+  const addressStyle = textValue(audience.addressStyle, "大家");
+  const groupAddress =
+    addressStyle === "大家" || addressStyle.endsWith("们")
+      ? addressStyle
+      : `${addressStyle}们`;
+  const brandTone = textValue(brand.tone, "自然、具体、克制");
+  const conversationalTone = ["熟人", "亲切", "口语", "轻松"].some((term) =>
+    brandTone.includes(term),
+  );
+  const announcementLead = conversationalTone
+    ? "跟大家说一声"
+    : "向大家同步";
+  const knowledgeLead = conversationalTone
+    ? "想和大家聊聊"
+    : "和大家说明";
   const contentTypes = Array.isArray(instruction.contentTypes)
     ? instruction.contentTypes.map(asRecord)
     : [];
@@ -293,6 +308,45 @@ function deterministicSkillOutput(
       if (intent.includes("[[fixture:violation]]")) {
         text += "\n\n一次根治所有问题，100%有效。";
       }
+    } else if (id === "announcement") {
+      text = [
+        `${groupAddress}，${merchantName}今天${announcementLead}群内安排。`,
+        campaign.name
+          ? `${textValue(campaign.name)}已经整理好，${textValue(campaign.offerDetails)}。`
+          : `${offeringName}的近期预约时段已经整理好。`,
+        textValue(campaign.rules),
+        "有需要可以先在群里问问当天时段，了解清楚、确认适合再预约。",
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    } else if (id === "campaign-warmup") {
+      text = campaign.name
+        ? [
+            `${groupAddress}，先${announcementLead}：${textValue(campaign.name)}要开始了。`,
+            textValue(campaign.offerDetails),
+            textValue(campaign.rules),
+            `这次会围绕「${offeringName}」安排，想了解的可以先问，确认合适再约。`,
+          ]
+            .filter(Boolean)
+            .join("\n\n")
+        : `${groupAddress}，近期还没有新的活动。${merchantName}会把「${offeringName}」的真实安排及时同步给大家。`;
+    } else if (id === "knowledge-share") {
+      const suitableFor = textValue(
+        fields.suitableFor,
+        textValue(audience.name, "想先了解自己是否适合的人"),
+      );
+      const process = textValue(
+        offering.description,
+        textValue(fields.sellingPoints, "服务过程可随时沟通感受"),
+      );
+      text = [
+        `${groupAddress}，今天${knowledgeLead}一个常见问题：${offeringName}适合谁？`,
+        `它更适合${suitableFor}。${process}`,
+        "每个人的状态和感受不同，先把过程、注意事项和自己的情况沟通清楚，再决定是否安排。",
+      ].join("\n\n");
+      if (intent.includes("[[fixture:violation]]")) {
+        text += "\n\n一次根治所有问题，100%有效。";
+      }
     } else {
       text = campaign.name
         ? [
@@ -308,15 +362,16 @@ function deterministicSkillOutput(
     return {
       assetQuery: {
         effectImage: false,
-        offeringNames: id === "persona" ? [] : [offeringName],
+        offeringNames:
+          id === "persona" || id === "announcement" ? [] : [offeringName],
         reason:
-          id === "persona"
+          id === "persona" || id === "announcement"
             ? "用真实门店日常承接主理人表达"
             : `选择与${offeringName}和文案场景一致的实拍`,
         sceneTags:
-          id === "persona"
+          id === "persona" || id === "announcement"
             ? ["到店日常", "门店环境"]
-            : id === "campaign"
+            : id === "campaign" || id === "campaign-warmup"
               ? ["活动", "到店日常"]
               : ["护理记录", "服务过程"],
       },

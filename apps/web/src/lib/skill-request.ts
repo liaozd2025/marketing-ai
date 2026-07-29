@@ -85,7 +85,7 @@ export function parseSkillRunRequest(
         input.intent,
         "intent",
         2_000,
-        "按今天的知识库内容生成三条可直接发布的朋友圈",
+        "按当前知识库内容生成该 Skill 的全部配置内容",
       ),
       kind: "skill",
       selectedKnowledgeTypes: selectedKnowledgeTypes.map((type) =>

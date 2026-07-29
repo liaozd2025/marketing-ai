@@ -28,6 +28,33 @@ const task: SkillTaskInput = {
   selectedKnowledgeTypes: ["brandProfile"],
   skillId: "daily-moments",
 };
+const communityPreset: ConfiguredSkillPreset = {
+  contentTypes: [
+    {
+      assetGuidance: "门店通知",
+      goal: "把安排说清楚",
+      id: "announcement",
+      label: "群公告",
+    },
+    {
+      assetGuidance: "活动实拍",
+      goal: "准确预告活动",
+      id: "campaign-warmup",
+      label: "活动预热",
+    },
+    {
+      assetGuidance: "服务过程实拍",
+      goal: "分享准确、克制的专业知识",
+      id: "knowledge-share",
+      label: "专业知识分享",
+    },
+  ],
+  defaultKnowledgeTypes: ["brandProfile", "offering", "audience", "campaign"],
+  description: "test community",
+  id: "community",
+  label: "社群运营",
+  systemInstruction: "使用品牌档案的语气生成三类社群内容。",
+};
 
 describe("configured content Skill", () => {
   it("injects every structured entity even when UI selects an emphasis subset", () => {
@@ -141,5 +168,99 @@ describe("configured content Skill", () => {
         task,
       }),
     ).toThrow(SkillProtocolError);
+  });
+
+  it("drives community content and brand voice through the same preset protocol and compliance finalizer", () => {
+    const communityTask: SkillTaskInput = {
+      action: "generate",
+      intent: "给今天的社群各准备一条",
+      kind: "skill",
+      selectedKnowledgeTypes: ["brandProfile", "campaign"],
+      skillId: "community",
+    };
+    const messages = buildSkillPrompt({
+      complianceLexicon: [],
+      knowledge: seedMerchantKnowledge,
+      preset: communityPreset,
+      task: communityTask,
+    });
+    const payload = JSON.parse(messages[1].content);
+
+    expect(payload.knowledge.brandProfile).toEqual({
+      persona: "在社区做了十年护理的主理人阿慢",
+      story: "坚持先问感受、再做护理，不用焦虑营销催客。",
+      tabooExpressions: ["包变美"],
+      tone: "像熟人聊天，具体、克制、不说教",
+    });
+    expect(payload.instruction.contentTypes.map(({ id }: { id: string }) => id)).toEqual([
+      "announcement",
+      "campaign-warmup",
+      "knowledge-share",
+    ]);
+
+    const result = finalizeSkillRun({
+      complianceLexicon: [
+        {
+          category: "疗效承诺",
+          replacement: "帮助改善",
+          severity: "block",
+          term: "根治",
+        },
+      ],
+      knowledge: seedMerchantKnowledge,
+      preset: communityPreset,
+      raw: parseSkillOutput(
+        JSON.stringify({
+          protocolVersion: "marketing-ai.skill-output.v1",
+          items: [
+            {
+              contentType: "announcement",
+              text: "姐妹们，今晚的预约安排已更新，想来可以先问问时段。",
+              assetQuery: {
+                sceneTags: ["到店日常"],
+                offeringNames: [],
+                effectImage: false,
+                reason: "用真实门店日常配合公告",
+              },
+            },
+            {
+              contentType: "campaign-warmup",
+              text: "八月晚间预约礼周五开始，需提前一天预约。",
+              assetQuery: {
+                sceneTags: ["活动"],
+                offeringNames: ["晚间肩颈舒缓护理"],
+                effectImage: false,
+                reason: "用活动相关实拍预热",
+              },
+            },
+            {
+              contentType: "knowledge-share",
+              text: "肩颈紧绷不能承诺根治，先了解状态再判断是否适合护理。",
+              assetQuery: {
+                sceneTags: ["护理记录"],
+                offeringNames: ["晚间肩颈舒缓护理"],
+                effectImage: false,
+                reason: "用真实服务过程辅助知识分享",
+              },
+            },
+          ],
+        }),
+      ),
+      task: communityTask,
+    });
+
+    expect(result.skillId).toBe("community");
+    expect(result.items.map(({ contentType }) => contentType)).toEqual([
+      "announcement",
+      "campaign-warmup",
+      "knowledge-share",
+    ]);
+    expect(result.items[2]).toMatchObject({
+      compliance: {
+        blocked: true,
+        hits: [expect.objectContaining({ term: "根治" })],
+      },
+      publishReady: false,
+    });
   });
 });

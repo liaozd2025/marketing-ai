@@ -15,6 +15,7 @@ export interface SkillContentType {
 
 export interface ConfiguredSkillPreset {
   readonly contentTypes: readonly SkillContentType[];
+  readonly ctaLabel?: string;
   readonly defaultKnowledgeTypes: readonly string[];
   readonly description: string;
   readonly id: string;

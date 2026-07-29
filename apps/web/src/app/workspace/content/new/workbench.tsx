@@ -4,6 +4,7 @@ import type {
   SkillContentResult,
   SkillRunResult,
 } from "@marketing-ai/content-skills";
+import type { SkillPreset } from "@marketing-ai/vertical-packs";
 import { useState } from "react";
 
 import { pollAgentTask } from "@/lib/poll-agent-task";
@@ -15,8 +16,11 @@ interface ContextItem {
   readonly type: string;
 }
 
-async function submitRun(body: Record<string, unknown>): Promise<SkillRunResult> {
-  const response = await fetch("/api/skills/daily-moments/runs", {
+async function submitRun(
+  skillId: string,
+  body: Record<string, unknown>,
+): Promise<SkillRunResult> {
+  const response = await fetch(`/api/skills/${skillId}/runs`, {
     body: JSON.stringify(body),
     headers: { "content-type": "application/json" },
     method: "POST",
@@ -76,7 +80,7 @@ function ResultCard({
       <header className="moments-card-header">
         <div>
           <span className="content-type">{item.label}</span>
-          <h2>{item.label}朋友圈</h2>
+          <h2>{item.label}</h2>
         </div>
         <span className={item.publishReady ? "publish-ready" : "publish-blocked"}>
           {item.publishReady
@@ -173,13 +177,32 @@ function ResultCard({
   );
 }
 
-export function DailyMomentsWorkbench({
+function defaultSelection(
+  context: readonly ContextItem[],
+  preset: SkillPreset,
+): string[] {
+  const available = new Set(
+    context.filter((item) => item.count > 0).map((item) => item.type),
+  );
+  return preset.defaultKnowledgeTypes.filter((type) => available.has(type));
+}
+
+export function ContentSkillWorkbench({
   context,
+  presets,
 }: {
   readonly context: readonly ContextItem[];
+  readonly presets: readonly SkillPreset[];
 }) {
-  const [selected, setSelected] = useState(
-    context.filter((item) => item.count > 0).map((item) => item.type),
+  const initialPreset = presets[0];
+  if (!initialPreset) {
+    throw new Error("Content workspace requires at least one Skill preset");
+  }
+  const [skillId, setSkillId] = useState(initialPreset.id);
+  const activePreset =
+    presets.find((preset) => preset.id === skillId) ?? initialPreset;
+  const [selected, setSelected] = useState(() =>
+    defaultSelection(context, initialPreset),
   );
   const [intent, setIntent] = useState("");
   const [result, setResult] = useState<SkillRunResult | null>(null);
@@ -192,7 +215,7 @@ export function DailyMomentsWorkbench({
     setError(null);
     try {
       setResult(
-        await submitRun({
+        await submitRun(skillId, {
           action: "generate",
           intent: intent || undefined,
           selected_knowledge_types: selected,
@@ -213,7 +236,7 @@ export function DailyMomentsWorkbench({
     setBusyType(item.contentType);
     setError(null);
     try {
-      const revised = await submitRun({
+      const revised = await submitRun(skillId, {
         action,
         content_type: item.contentType,
         instruction,
@@ -246,9 +269,34 @@ export function DailyMomentsWorkbench({
   return (
     <>
       <section className="content-hero">
-        <p className="eyebrow">朋友圈日更 Skill</p>
+        <div aria-label="内容 Skill" className="skill-switcher" role="group">
+          {presets.map((preset) => (
+            <button
+              aria-pressed={preset.id === skillId}
+              className={preset.id === skillId ? "active" : ""}
+              disabled={busy || busyType !== null}
+              key={preset.id}
+              onClick={() => {
+                setSkillId(preset.id);
+                setSelected(defaultSelection(context, preset));
+                setResult(null);
+                setError(null);
+              }}
+              type="button"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+        <p className="eyebrow">{activePreset.label} Skill</p>
         <h1>今天想发点什么？</h1>
-        <p>选好参考资料，一键生成「人设 / 种草 / 活动」三条朋友圈。</p>
+        <p>
+          选好参考资料，一键生成
+          {activePreset.contentTypes
+            .map(({ label }) => `「${label}」`)
+            .join("、")}
+          。
+        </p>
         <div className="content-composer">
           <div className="context-selector">
             <span>本次参考的知识库上下文</span>
@@ -285,10 +333,13 @@ export function DailyMomentsWorkbench({
           />
           <div className="composer-footer">
             <small>
-              选项用于强调参考重点；品牌档案、Offering、客群、活动和会员分层仍会全量注入。
+              选项用于强调参考重点；worker 仍会从当前商家的知识库全量注入结构化实体。
             </small>
             <button disabled={busy} onClick={generate} type="button">
-              {busy ? "Agent 正在生成…" : "一键生成今天的朋友圈（3 条）"}
+              {busy
+                ? "Agent 正在生成…"
+                : (activePreset.ctaLabel ??
+                  `一键生成${activePreset.label}（${activePreset.contentTypes.length} 条）`)}
             </button>
           </div>
         </div>

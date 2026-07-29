@@ -76,4 +76,11 @@ describe("Skill run request", () => {
       ).toThrow(InvalidSkillRequestError);
     }
   });
+
+  it("uses a Skill-neutral default intent for every configured preset", () => {
+    expect(parseSkillRunRequest({}, "community")).toMatchObject({
+      intent: "按当前知识库内容生成该 Skill 的全部配置内容",
+      skillId: "community",
+    });
+  });
 });

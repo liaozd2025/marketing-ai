@@ -51,6 +51,7 @@ export interface SkillPreset {
     readonly id: string;
     readonly label: string;
   }[];
+  readonly ctaLabel?: string;
   readonly defaultKnowledgeTypes: readonly string[];
   readonly description: string;
   readonly id: string;

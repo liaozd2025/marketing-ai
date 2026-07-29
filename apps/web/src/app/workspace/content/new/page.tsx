@@ -5,12 +5,13 @@ import { logoutAction } from "@/app/actions";
 import { buildKnowledgeBaseSummary } from "@/lib/knowledge-base-summary";
 import { requireTenantContext } from "@/lib/tenant-context";
 
-import { DailyMomentsWorkbench } from "./workbench";
+import { ContentSkillWorkbench } from "./workbench";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewContentPage() {
   const { merchant, tenant } = await requireTenantContext();
+  const pack = getVerticalPack(merchant.verticalPackId);
   const [assets, audiences, brandProfile, campaigns, memberSegments, offerings] =
     await Promise.all([
       tenant.knowledgeBase.listAssets(),
@@ -27,8 +28,12 @@ export default async function NewContentPage() {
     campaigns,
     memberSegments,
     offerings,
-    pack: getVerticalPack(merchant.verticalPackId),
+    pack,
   });
+  const visibleSkillIds = new Set(["daily-moments", "community"]);
+  const presets = pack.skillPresets.filter((preset) =>
+    visibleSkillIds.has(preset.id),
+  );
 
   return (
     <main className="workspace-shell">
@@ -56,14 +61,11 @@ export default async function NewContentPage() {
       </aside>
       <section className="workspace-content content-workspace">
         <nav aria-label="内容 Skill" className="skill-switcher">
-          <Link className="active" href="/workspace/content/new">
-            朋友圈日更
-          </Link>
           <Link href="/workspace/content/member-touch">
             会员生命周期触达
           </Link>
         </nav>
-        <DailyMomentsWorkbench context={context} />
+        <ContentSkillWorkbench context={context} presets={presets} />
       </section>
     </main>
   );
