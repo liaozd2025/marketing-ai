@@ -1,4 +1,5 @@
 import { database, tenantId } from "@marketing-ai/database";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/actions";
@@ -26,15 +27,15 @@ export default async function WorkspacePage() {
     <main className="workspace-shell">
       <aside className="sidebar">
         <div>
-          <div className="sidebar-brand">
+          <Link className="sidebar-brand" href="/workspace">
             <span className="brand-mark small">M</span>
             <span>Marketing AI</span>
-          </div>
+          </Link>
           <nav aria-label="主导航">
             <a className="active" href="#overview">
               工作台
             </a>
-            <a href="#knowledge-base">知识库</a>
+            <Link href="/workspace/knowledge-base">我的资料</Link>
             <a href="#members">成员</a>
           </nav>
         </div>
@@ -71,9 +72,11 @@ export default async function WorkspacePage() {
         <div className="workspace-grid">
           <section className="info-card" id="knowledge-base">
             <span className="card-index">01</span>
-            <h3>知识库</h3>
+            <h3>我的资料</h3>
             <p>品牌档案、Offering、客群、活动、会员分层和素材。</p>
-            <span className="status">等待录入</span>
+            <Link className="status" href="/workspace/knowledge-base">
+              进入录入
+            </Link>
           </section>
 
           <section className="info-card" id="members">

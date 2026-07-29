@@ -6,12 +6,14 @@ import type {
   SqlExecutor,
   TenantId,
 } from "./types";
+import { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
 
 interface MerchantRow extends QueryResultRow {
   created_at: Date;
   id: string;
   name: string;
   slug: string;
+  vertical_pack_id: string;
 }
 
 interface MemberRow extends QueryResultRow {
@@ -28,6 +30,7 @@ function toMerchant(row: MerchantRow): Merchant {
     id: row.id,
     name: row.name,
     slug: row.slug,
+    verticalPackId: row.vertical_pack_id,
   };
 }
 
@@ -46,14 +49,21 @@ function toMember(row: MemberRow): Member {
  * one tenant and does not expose methods that accept a merchantId argument.
  */
 export class TenantDataAccess {
+  readonly knowledgeBase: KnowledgeBaseDataAccess;
+
   constructor(
     private readonly executor: SqlExecutor,
     private readonly merchantId: TenantId,
-  ) {}
+  ) {
+    this.knowledgeBase = new KnowledgeBaseDataAccess(
+      this.executor,
+      this.merchantId,
+    );
+  }
 
   async getMerchant(): Promise<Merchant | null> {
     const result = await this.executor.query<MerchantRow>(
-      `SELECT id, slug, name, created_at
+      `SELECT id, slug, name, vertical_pack_id, created_at
        FROM merchants
        WHERE id = $1`,
       [this.merchantId],

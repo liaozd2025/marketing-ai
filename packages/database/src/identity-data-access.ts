@@ -22,6 +22,7 @@ interface MerchantRow extends QueryResultRow {
   id: string;
   name: string;
   slug: string;
+  vertical_pack_id: string;
 }
 
 export class EmailAlreadyRegisteredError extends Error {
@@ -74,6 +75,7 @@ function toMerchant(row: MerchantRow): Merchant {
     id: row.id,
     name: row.name,
     slug: row.slug,
+    verticalPackId: row.vertical_pack_id,
   };
 }
 
@@ -119,7 +121,7 @@ export class IdentityDataAccess {
       const merchantResult = await client.query<MerchantRow>(
         `INSERT INTO merchants (id, slug, name)
          VALUES ($1, $2, $3)
-         RETURNING id, slug, name, created_at`,
+         RETURNING id, slug, name, vertical_pack_id, created_at`,
         [
           merchantId,
           merchantSlug(input.merchantName, merchantId),

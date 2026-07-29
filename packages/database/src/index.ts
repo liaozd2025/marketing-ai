@@ -10,7 +10,22 @@ export {
   TenantAgentDataAccess,
 } from "./tenant-agent-data-access";
 export { TenantDataAccess } from "./tenant-data-access";
+export { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
 export { tenantId } from "./types";
+export type {
+  Asset,
+  AssetInput,
+  Audience,
+  AudienceInput,
+  BrandProfile,
+  BrandProfileInput,
+  Campaign,
+  CampaignInput,
+  MemberSegment,
+  MemberSegmentInput,
+  Offering,
+  OfferingInput,
+} from "./knowledge-base-types";
 export type {
   AuthenticatedMember,
   Member,

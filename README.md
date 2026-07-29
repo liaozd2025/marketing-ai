@@ -114,3 +114,44 @@ pnpm worker:once
 - `packages/database`：迁移、身份数据访问和强制租户隔离的数据层
 - `packages/agent-service`：provider 契约、真实/测试 adapter 和路由降级
 - `packages/agent-worker`：独立任务领取、模型执行、重试和结果持久化
+- `packages/vertical-packs`：可版本化垂类包配置、加载与 Offering 字段校验
+
+## 知识库与垂类包
+
+登录后从 `/workspace/knowledge-base` 进入「我的资料」。界面录入的仍是
+ADR-0001 定义的六类结构化知识库实体，而不是文件夹式文档库：
+
+- 品牌档案、Offering、客群、活动、会员分层、素材均支持创建/读取/更新/删除
+- 所有服务端 Action 只从签名会话取得商家 ID，再进入租户绑定的数据层
+- 会员分层只存分层定义与触达场景，不包含会员个人记录或个人信息字段
+- 素材上传接受图片/视频（单文件 20 MB），默认存入 Web 进程工作目录下的
+  `.data/assets`；生产环境应通过 `ASSET_STORAGE_DIR` 指向持久化卷
+- 素材原文件只能通过带签名会话的
+  `/api/knowledge-base/assets/:id/file` 读取，并再次执行租户隔离查询
+
+美业 v1 配置位于
+`packages/vertical-packs/config/beauty-v1.json`，包含 Offering 字段模板、
+场景词表、可维护违禁词表和四个 Skill 预设。Offering 的服务端校验和 UI
+表单读取同一份 `offeringFields` 配置；调整配置即可调整表单，不需要加入
+垂类判断分支。
+
+当前商家的垂类包可从已鉴权 API 读取：
+
+```text
+GET /api/vertical-pack
+GET /api/knowledge-base/summary
+```
+
+第二个接口返回六类实体的记录数与完善度，供后续生成页的知识库上下文面板
+使用。
+
+## PostgreSQL 集成验证
+
+数据库集成测试默认跳过；先对测试数据库执行迁移，再提供
+`TEST_DATABASE_URL` 即可运行真实六实体 CRUD 和双租户隔离验证：
+
+```bash
+DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5433/marketing_ai pnpm db:migrate
+TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5433/marketing_ai \
+  pnpm --filter @marketing-ai/database test
+```

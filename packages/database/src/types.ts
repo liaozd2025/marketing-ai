@@ -17,6 +17,7 @@ export interface Merchant {
   readonly id: string;
   readonly name: string;
   readonly slug: string;
+  readonly verticalPackId: string;
 }
 
 export interface Member {

@@ -1,0 +1,152 @@
+{
+  "id": "beauty-v1",
+  "version": 1,
+  "vertical": "beauty",
+  "label": "美业 / 大健康",
+  "offeringFields": [
+    {
+      "key": "offeringType",
+      "label": "Offering 类型",
+      "type": "select",
+      "required": true,
+      "options": [
+        { "value": "service", "label": "服务项目" },
+        { "value": "package", "label": "卡项 / 套餐" },
+        { "value": "product", "label": "零售产品" }
+      ],
+      "placeholder": "请选择类型",
+      "help": "用于区分单次服务、卡项套餐和门店零售产品。"
+    },
+    {
+      "key": "durationMinutes",
+      "label": "服务时长（分钟）",
+      "type": "number",
+      "required": false,
+      "min": 1,
+      "max": 1440,
+      "placeholder": "例如 60"
+    },
+    {
+      "key": "price",
+      "label": "日常价格（元）",
+      "type": "number",
+      "required": true,
+      "min": 0,
+      "placeholder": "例如 398"
+    },
+    {
+      "key": "suitableFor",
+      "label": "适合客群",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "例如：久坐、肩颈紧张，希望日常放松的人群"
+    },
+    {
+      "key": "serviceProcess",
+      "label": "服务流程",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "按步骤描述到店后的服务流程"
+    },
+    {
+      "key": "sellingPoints",
+      "label": "核心卖点",
+      "type": "textarea",
+      "required": true,
+      "placeholder": "写清真实体验与差异点，避免疗效承诺"
+    },
+    {
+      "key": "precautions",
+      "label": "注意事项",
+      "type": "textarea",
+      "required": false,
+      "placeholder": "禁忌、术前术后或使用注意事项"
+    }
+  ],
+  "scenarioVocabulary": [
+    {
+      "key": "daily-moments",
+      "label": "朋友圈日更",
+      "terms": ["到店日常", "护理记录", "手艺展示", "真实反馈", "预约提醒"]
+    },
+    {
+      "key": "member-touch",
+      "label": "会员触达",
+      "terms": ["新客欢迎", "复购提醒", "沉睡唤醒", "卡项将到期", "生日关怀"]
+    },
+    {
+      "key": "community",
+      "label": "社群运营",
+      "terms": ["知识科普", "互动问答", "福利预告", "活动报名", "到店提醒"]
+    },
+    {
+      "key": "xiaohongshu",
+      "label": "小红书图文",
+      "terms": ["门店探店", "项目体验", "护理攻略", "避坑指南", "生活方式"]
+    }
+  ],
+  "complianceLexicon": [
+    {
+      "term": "根治",
+      "category": "疗效承诺",
+      "severity": "block",
+      "replacement": "帮助改善"
+    },
+    {
+      "term": "永久有效",
+      "category": "绝对化承诺",
+      "severity": "block",
+      "replacement": "效果因人而异"
+    },
+    {
+      "term": "100%有效",
+      "category": "绝对化承诺",
+      "severity": "block",
+      "replacement": "实际体验因人而异"
+    },
+    {
+      "term": "无任何副作用",
+      "category": "安全性承诺",
+      "severity": "block",
+      "replacement": "使用前请了解注意事项"
+    },
+    {
+      "term": "国家级",
+      "category": "广告法禁用",
+      "severity": "block",
+      "replacement": ""
+    },
+    {
+      "term": "第一",
+      "category": "绝对化用语",
+      "severity": "warn",
+      "replacement": "受欢迎的"
+    }
+  ],
+  "skillPresets": [
+    {
+      "id": "daily-moments",
+      "label": "朋友圈日更",
+      "description": "结合品牌语气、Offering 与真实到店素材，批量生成日更内容。",
+      "defaultKnowledgeTypes": ["brandProfile", "offering", "asset", "campaign"]
+    },
+    {
+      "id": "member-touch",
+      "label": "会员触达",
+      "description": "按会员分层定义生成触达话术模板，不接触会员个人信息。",
+      "defaultKnowledgeTypes": ["brandProfile", "offering", "memberSegment", "campaign"]
+    },
+    {
+      "id": "community",
+      "label": "社群运营",
+      "description": "围绕客群痛点与活动节奏生成社群内容。",
+      "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "campaign"]
+    },
+    {
+      "id": "xiaohongshu",
+      "label": "小红书图文",
+      "description": "以真实体验与实拍素材生成小红书图文结构。",
+      "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "asset"]
+    }
+  ]
+}
