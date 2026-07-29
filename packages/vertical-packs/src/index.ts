@@ -2,6 +2,7 @@ import beautyV1 from "../config/beauty-v1.json";
 
 import type {
   OfferingFieldDefinition,
+  SkillPreset,
   VerticalPack,
 } from "./types";
 
@@ -30,6 +31,23 @@ function assertPack(pack: VerticalPack): void {
     }
     keys.add(field.key);
   }
+
+  const skillIds = new Set<string>();
+  for (const preset of pack.skillPresets) {
+    if (
+      !preset.id ||
+      !preset.systemInstruction ||
+      preset.contentTypes.length === 0 ||
+      skillIds.has(preset.id)
+    ) {
+      throw new Error(`Invalid Skill preset in vertical pack ${pack.id}`);
+    }
+    skillIds.add(preset.id);
+    const contentTypeIds = preset.contentTypes.map(({ id }) => id);
+    if (new Set(contentTypeIds).size !== contentTypeIds.length) {
+      throw new Error(`Duplicate content type in Skill preset ${preset.id}`);
+    }
+  }
 }
 
 for (const pack of packs) {
@@ -47,6 +65,17 @@ export function getVerticalPack(id: string): VerticalPack {
 
 export function listVerticalPacks(): readonly VerticalPack[] {
   return packs;
+}
+
+export function getSkillPreset(
+  pack: VerticalPack,
+  skillId: string,
+): SkillPreset {
+  const preset = pack.skillPresets.find((candidate) => candidate.id === skillId);
+  if (!preset) {
+    throw new Error(`Unknown Skill preset ${skillId} in ${pack.id}`);
+  }
+  return preset;
 }
 
 export interface OfferingFieldValidationResult {

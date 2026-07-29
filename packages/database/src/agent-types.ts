@@ -3,7 +3,8 @@ export type AgentTaskStatus = "queued" | "running" | "succeeded" | "failed";
 
 export type AgentTaskInput =
   | { readonly prompt: string }
-  | { readonly texts: readonly string[] };
+  | { readonly texts: readonly string[] }
+  | SkillTaskInput;
 
 export interface AgentTask {
   readonly attemptCount: number;
@@ -65,7 +66,8 @@ export type SubmitAgentTaskInput =
   | {
       readonly capability: "embedding";
       readonly texts: readonly string[];
-    };
+    }
+  | ({ readonly capability: "text" } & SkillTaskInput);
 
 export interface SubmittedAgentTask {
   readonly conversationId: string | null;
@@ -76,3 +78,4 @@ export interface SubmittedAgentTask {
 export interface AgentTaskView extends AgentTask {
   readonly providerAttempts: readonly ProviderAttempt[];
 }
+import type { SkillTaskInput } from "@marketing-ai/content-skills";

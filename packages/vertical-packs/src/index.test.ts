@@ -24,6 +24,11 @@ describe("vertical pack public interface", () => {
       "community",
       "xiaohongshu",
     ]);
+    expect(pack.skillPresets[0].contentTypes.map(({ id }) => id)).toEqual([
+      "persona",
+      "seeding",
+      "campaign",
+    ]);
   });
 
   it("uses the same field configuration for validation and completeness", () => {

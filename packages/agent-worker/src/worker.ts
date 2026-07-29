@@ -3,10 +3,13 @@ import {
   ProviderRouter,
   type AgentRequest,
 } from "@marketing-ai/agent-service";
+import { SkillProtocolError } from "@marketing-ai/content-skills";
 import type {
   ClaimedAgentTask,
   ConversationMessage,
 } from "@marketing-ai/database";
+
+import type { SkillRuntime } from "./skill-runtime";
 
 export interface WorkerQueue {
   claimNextTask(workerId: string): Promise<ClaimedAgentTask | null>;
@@ -36,6 +39,9 @@ function requestForTask(
   task: ClaimedAgentTask,
   messages: readonly ConversationMessage[],
 ): AgentRequest {
+  if ("kind" in task.input) {
+    throw new Error("Skill tasks require the configured Skill runtime");
+  }
   switch (task.capability) {
     case "text":
       return {
@@ -69,6 +75,7 @@ export class AgentWorker {
     private readonly workerId: string,
     private readonly queue: WorkerQueue,
     private readonly router: ProviderRouter,
+    private readonly skillRuntime?: SkillRuntime,
   ) {}
 
   async runOnce(): Promise<boolean> {
@@ -78,19 +85,40 @@ export class AgentWorker {
     }
 
     try {
-      const messages = await this.queue.getConversationMessages(task);
+      const prepared =
+        "kind" in task.input && task.input.kind === "skill"
+          ? await this.skillRuntime?.prepare(task)
+          : undefined;
+      if ("kind" in task.input && !prepared) {
+        throw new Error("Skill runtime is not configured");
+      }
+      const messages = prepared
+        ? []
+        : await this.queue.getConversationMessages(task);
       const result = await this.router.execute({
-        request: requestForTask(task, messages),
+        request: prepared
+          ? prepared.request
+          : requestForTask(task, messages),
         taskAttempt: task.attemptCount,
         taskId: task.id,
       });
-      await this.queue.completeTask(task, this.workerId, result.output);
+      const output =
+        prepared && result.capability === "text"
+          ? prepared.finalize(result.output.text)
+          : result.output;
+      await this.queue.completeTask(task, this.workerId, output);
     } catch (error) {
       if (error instanceof ProvidersExhaustedError) {
         await this.queue.failOrRetryTask(task, this.workerId, {
           code: "PROVIDERS_EXHAUSTED",
           message: error.message,
           retryable: error.retryable,
+        });
+      } else if (error instanceof SkillProtocolError) {
+        await this.queue.failOrRetryTask(task, this.workerId, {
+          code: error.code,
+          message: error.message,
+          retryable: false,
         });
       } else {
         await this.queue.failOrRetryTask(task, this.workerId, {

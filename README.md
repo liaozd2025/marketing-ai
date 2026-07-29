@@ -108,12 +108,49 @@ pnpm worker
 pnpm worker:once
 ```
 
+### 朋友圈日更 Skill
+
+登录后进入 `/workspace/content/new`。入口以知识库上下文 chips 和一个可选意图
+输入框为主，一次异步生成「人设 / 种草 / 活动」三类朋友圈。HTTP 仅把
+Skill run 写入 `agent_tasks` 并返回 `202`：
+
+```http
+POST /api/skills/daily-moments/runs
+Content-Type: application/json
+
+{
+  "action": "generate",
+  "intent": "今天下雨，语气松弛一点",
+  "selected_knowledge_types": ["brandProfile", "offering", "asset"]
+}
+```
+
+`selected_knowledge_types` 只表达本次创作的强调项。worker 仍按 ADR-0004 从
+任务所属租户加载并全量注入品牌档案、Offering、客群、活动、会员分层，素材则
+按场景和 Offering 标签匹配。页面用通用任务 API
+`GET /api/agent/tasks/{task_id}` 轮询，完成后展示三条预览、发布就绪汇总和选图
+建议。
+
+每条卡片的「聊着改」和「一键合规改写」也通过同一 Skill run API 提交
+`refine` / `compliance_rewrite` 动作并由 worker 异步执行，不在 HTTP 或
+Server Action 内同步调用模型。生成结果必须通过
+`packages/compliance` 的垂类无关校验器；worker 使用当前垂类包词表逐项记录
+命中位置、类别、级别和替换建议。任一命中都会令 `blocked=true` 且
+`publishReady=false`，Web 同时禁用复制。
+
+provider 只返回 `marketing-ai.skill-output.v1` 原始 JSON。严格协议解析、
+素材匹配、合规校验和最终 `marketing-ai.skill-result.v1` 组装均在 worker
+完成，因此切换真实 OpenAI-compatible provider 不改变结果边界。开发环境的
+确定性 provider 会根据知识库生成完整示例内容，不把 prompt 回显成可发布结果。
+
 ## Workspace
 
 - `apps/web`：Next.js Web 与服务端 Action
 - `packages/database`：迁移、身份数据访问和强制租户隔离的数据层
 - `packages/agent-service`：provider 契约、真实/测试 adapter 和路由降级
 - `packages/agent-worker`：独立任务领取、模型执行、重试和结果持久化
+- `packages/content-skills`：配置驱动的 Skill prompt/输出协议、素材匹配和结果组装
+- `packages/compliance`：独立、纯函数式、垂类无硬编码的合规校验器
 - `packages/vertical-packs`：可版本化垂类包配置、加载与 Offering 字段校验
 
 ## 知识库与垂类包
@@ -148,10 +185,21 @@ GET /api/knowledge-base/summary
 ## PostgreSQL 集成验证
 
 数据库集成测试默认跳过；先对测试数据库执行迁移，再提供
-`TEST_DATABASE_URL` 即可运行真实六实体 CRUD 和双租户隔离验证：
+`TEST_DATABASE_URL` 即可运行真实六实体 CRUD、双租户隔离，以及朋友圈
+`知识库 → queued → worker → 合规 → 结构化预览` tracer bullet：
 
 ```bash
-DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5433/marketing_ai pnpm db:migrate
-TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5433/marketing_ai \
-  pnpm --filter @marketing-ai/database test
+DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai pnpm db:migrate
+TEST_DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai \
+  pnpm --filter @marketing-ai/database --filter @marketing-ai/agent-worker test
+```
+
+若 Web 已在 `3105` 端口连接同一测试库运行，可再验证真实签名 cookie、HTTP 202、
+轮询、跨租户 404、违规阻断和异步合规改写：
+
+```bash
+DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai \
+SESSION_SECRET=replace-with-the-same-web-secret \
+ACCEPTANCE_BASE_URL=http://localhost:3105 \
+pnpm --filter @marketing-ai/agent-worker acceptance:http
 ```

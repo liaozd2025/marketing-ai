@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "acceptance:http": "tsx scripts/daily-moments-http-acceptance.ts",
     "dev": "node --env-file-if-exists=../../apps/web/.env.local --import tsx --watch src/run.ts",
     "start": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts",
     "once": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts --once",
@@ -12,7 +13,9 @@
   },
   "dependencies": {
     "@marketing-ai/agent-service": "workspace:*",
-    "@marketing-ai/database": "workspace:*"
+    "@marketing-ai/content-skills": "workspace:*",
+    "@marketing-ai/database": "workspace:*",
+    "@marketing-ai/vertical-packs": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.6"

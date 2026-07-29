@@ -72,7 +72,7 @@ export class TenantAgentDataAccess {
       let conversationId: string | null = null;
 
       if (input.capability === "text") {
-        if (input.conversationId) {
+        if ("conversationId" in input && input.conversationId) {
           const conversation = await client.query<{ id: string }>(
             `SELECT id
              FROM conversations
@@ -97,21 +97,33 @@ export class TenantAgentDataAccess {
             throw new ConversationBusyError();
           }
         } else {
+          const title =
+            "kind" in input
+              ? input.action === "generate"
+                ? input.intent
+                : input.instruction
+              : input.prompt;
           const conversation = await client.query<{ id: string }>(
             `INSERT INTO conversations
                (merchant_id, created_by_member_id, title)
              VALUES ($1, $2, $3)
              RETURNING id`,
-            [this.merchantId, memberId, input.prompt.slice(0, 80)],
+            [this.merchantId, memberId, title.slice(0, 80)],
           );
           conversationId = conversation.rows[0].id;
         }
 
+        const userMessage =
+          "kind" in input
+            ? input.action === "generate"
+              ? input.intent
+              : input.instruction
+            : input.prompt;
         await client.query(
           `INSERT INTO conversation_messages
              (merchant_id, conversation_id, role, content)
            VALUES ($1, $2, 'user', $3)`,
-          [this.merchantId, conversationId, input.prompt],
+          [this.merchantId, conversationId, userMessage],
         );
         await client.query(
           `UPDATE conversations
@@ -124,7 +136,23 @@ export class TenantAgentDataAccess {
       const taskInput =
         input.capability === "embedding"
           ? { texts: input.texts }
-          : { prompt: input.prompt };
+          : "kind" in input
+            ? {
+                action: input.action,
+                ...(input.action === "generate"
+                  ? {
+                      intent: input.intent,
+                      selectedKnowledgeTypes: input.selectedKnowledgeTypes,
+                    }
+                  : {
+                      contentType: input.contentType,
+                      instruction: input.instruction,
+                      sourceText: input.sourceText,
+                    }),
+                kind: input.kind,
+                skillId: input.skillId,
+              }
+            : { prompt: input.prompt };
       const task = await client.query<{ id: string }>(
         `INSERT INTO agent_tasks
            (merchant_id, created_by_member_id, conversation_id, capability, input)

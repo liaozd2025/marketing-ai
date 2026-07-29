@@ -64,9 +64,9 @@ export default async function WorkspacePage() {
             当前会话已绑定到 <strong>{merchant.name}</strong>，页面中的所有数据
             都通过该商家的租户数据层读取。
           </p>
-          <button disabled type="button">
-            新建内容（下一阶段）
-          </button>
+          <Link className="primary-link-button" href="/workspace/content/new">
+            新建朋友圈内容
+          </Link>
         </section>
 
         <div className="workspace-grid">

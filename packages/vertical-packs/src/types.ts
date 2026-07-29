@@ -35,10 +35,17 @@ export interface ComplianceLexiconEntry {
 }
 
 export interface SkillPreset {
+  readonly contentTypes: readonly {
+    readonly assetGuidance: string;
+    readonly goal: string;
+    readonly id: string;
+    readonly label: string;
+  }[];
   readonly defaultKnowledgeTypes: readonly string[];
   readonly description: string;
   readonly id: string;
   readonly label: string;
+  readonly systemInstruction: string;
 }
 
 export interface VerticalPack {

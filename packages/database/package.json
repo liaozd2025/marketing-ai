@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@marketing-ai/agent-service": "workspace:*",
+    "@marketing-ai/content-skills": "workspace:*",
     "pg": "^8.22.0"
   },
   "devDependencies": {

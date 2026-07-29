@@ -2,7 +2,7 @@ export type ProviderCapability = "text" | "image" | "embedding";
 
 export interface ConversationMessage {
   readonly content: string;
-  readonly role: "user" | "assistant";
+  readonly role: "system" | "user" | "assistant";
 }
 
 export interface TextRequest {
