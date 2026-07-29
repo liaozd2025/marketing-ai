@@ -62,6 +62,15 @@ export function parseSkillRunRequest(
       skillId: safeSkillId,
     };
   }
+  if (
+    safeSkillId === "xiaohongshu" &&
+    input.action !== undefined &&
+    input.action !== "generate"
+  ) {
+    throw new InvalidSkillRequestError(
+      "Xiaohongshu package currently supports generation only",
+    );
+  }
   if (input.action === undefined || input.action === "generate") {
     const selectedKnowledgeTypes =
       input.selected_knowledge_types === undefined
@@ -78,6 +87,37 @@ export function parseSkillRunRequest(
         "selected_knowledge_types must be a string array with at most 6 items",
       );
     }
+    const xiaohongshuImageOptions =
+      safeSkillId === "xiaohongshu"
+        ? (() => {
+            const imageUsage = input.image_usage ?? "atmosphere";
+            if (imageUsage !== "atmosphere" && imageUsage !== "effect") {
+              throw new InvalidSkillRequestError(
+                "image_usage must be atmosphere or effect",
+              );
+            }
+            const allowAiImage = input.allow_ai_image ?? false;
+            if (typeof allowAiImage !== "boolean") {
+              throw new InvalidSkillRequestError(
+                "allow_ai_image must be a boolean",
+              );
+            }
+            if (imageUsage === "effect" && allowAiImage) {
+              throw new InvalidSkillRequestError(
+                "AI image fallback is forbidden for effect usage",
+              );
+            }
+            return { allowAiImage, imageUsage };
+          })()
+        : {};
+    if (
+      safeSkillId !== "xiaohongshu" &&
+      ("image_usage" in input || "allow_ai_image" in input)
+    ) {
+      throw new InvalidSkillRequestError(
+        "image options are only supported by the Xiaohongshu Skill",
+      );
+    }
     return {
       action: "generate",
       capability: "text",
@@ -92,6 +132,7 @@ export function parseSkillRunRequest(
         (type as string).trim(),
       ),
       skillId: safeSkillId,
+      ...xiaohongshuImageOptions,
     };
   }
   if (

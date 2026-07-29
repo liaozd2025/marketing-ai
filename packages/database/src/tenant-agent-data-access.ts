@@ -142,6 +142,12 @@ export class TenantAgentDataAccess {
                 action: input.action,
                 ...(input.action === "generate"
                   ? {
+                      ...("allowAiImage" in input
+                        ? { allowAiImage: input.allowAiImage }
+                        : {}),
+                      ...("imageUsage" in input
+                        ? { imageUsage: input.imageUsage }
+                        : {}),
                       intent: input.intent,
                       selectedKnowledgeTypes: input.selectedKnowledgeTypes,
                     }

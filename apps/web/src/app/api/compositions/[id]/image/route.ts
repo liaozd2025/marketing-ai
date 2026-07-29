@@ -19,7 +19,7 @@ export async function GET(
     return Response.json({ error: "not-found" }, { status: 404 });
   }
   const composition = await context.tenant.compositions.get(id);
-  if (!composition) {
+  if (!composition || composition.sourceTaskId) {
     return Response.json({ error: "not-found" }, { status: 404 });
   }
 

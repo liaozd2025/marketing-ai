@@ -13,6 +13,7 @@ export interface AgentTaskRow extends QueryResultRow {
   completed_at: Date | null;
   conversation_id: string | null;
   created_at: Date;
+  created_by_member_id: string;
   error_code: string | null;
   error_message: string | null;
   id: string;
@@ -37,7 +38,7 @@ export interface ProviderAttemptRow extends QueryResultRow {
 }
 
 export const agentTaskColumns = `
-  id, merchant_id, conversation_id, capability, status, input, result,
+  id, merchant_id, created_by_member_id, conversation_id, capability, status, input, result,
   error_code, error_message, attempt_count, max_attempts, created_at,
   updated_at, completed_at
 `;
@@ -49,6 +50,7 @@ export function toAgentTask(row: AgentTaskRow): AgentTask {
     completedAt: row.completed_at,
     conversationId: row.conversation_id,
     createdAt: row.created_at,
+    createdByMemberId: row.created_by_member_id,
     errorCode: row.error_code,
     errorMessage: row.error_message,
     id: row.id,

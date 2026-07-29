@@ -199,6 +199,67 @@ function deterministicMemberTouchOutput(
   });
 }
 
+function deterministicXiaohongshuOutput(
+  request: Parameters<TextProvider["generate"]>[0],
+): string | null {
+  if (
+    !request.messages.some(
+      ({ content, role }) =>
+        role === "system" &&
+        content.includes("MARKETING_AI_XIAOHONGSHU_PROTOCOL_V1"),
+    )
+  ) {
+    return null;
+  }
+  const latest = [...request.messages]
+    .reverse()
+    .find((message) => message.role === "user");
+  const payload = asRecord(JSON.parse(latest?.content ?? "{}"));
+  const instruction = asRecord(payload.instruction);
+  const knowledge = asRecord(payload.knowledge);
+  const offering = firstRecord(knowledge.offerings);
+  const audience = firstRecord(knowledge.audiences);
+  const fields = asRecord(offering.fieldValues);
+  const intent = textValue(instruction.intent);
+  const merchantName = textValue(knowledge.merchantName, "这家小店");
+  const offeringName = textValue(offering.name, "到店护理");
+  const suitableFor = textValue(
+    fields.suitableFor,
+    textValue(audience.name, "想认真了解护理过程的人"),
+  );
+  const title = `${offeringName}｜下班后的一小时真实记录`;
+  const body = [
+    `最近在 ${merchantName} 认真体验了「${offeringName}」。`,
+    `如果你是${suitableFor}，可以先了解过程和注意事项，再判断是否适合自己。`,
+    textValue(
+      offering.description,
+      "全程先沟通真实状态，服务中的感受可以随时反馈。",
+    ),
+    "这篇只记录真实环境和服务过程，不替每个人承诺相同结果。",
+  ].join("\n\n");
+  const coverHeadline = intent.includes("[[fixture:cover-violation]]")
+    ? "一次根治所有问题"
+    : "下班后，留一小时给自己";
+  const query = includesAny(intent, ["秋", "暖", "autumn"])
+    ? "适合秋季护肤氛围的暖色实拍图"
+    : `与${offeringName}服务过程匹配的真实护理记录`;
+  return JSON.stringify({
+    assetQuery: {
+      offeringNames: [offeringName],
+      query,
+      reason: `语义选择与${offeringName}和笔记主题一致的真实素材`,
+      sceneTags: ["护理记录", "到店日常"],
+    },
+    body,
+    cover: {
+      body: "真实环境 · 真实过程 · 克制分享",
+      headline: coverHeadline,
+    },
+    protocolVersion: "marketing-ai.xiaohongshu-output.v1",
+    title,
+  });
+}
+
 function deterministicSkillOutput(
   request: Parameters<TextProvider["generate"]>[0],
 ): string | null {
@@ -395,7 +456,9 @@ export class DeterministicTextProvider implements TextProvider {
     if (memberTouchOutput) {
       return { text: memberTouchOutput };
     }
-    const skillOutput = deterministicSkillOutput(request);
+    const skillOutput =
+      deterministicXiaohongshuOutput(request) ??
+      deterministicSkillOutput(request);
     if (skillOutput) {
       return { text: skillOutput };
     }

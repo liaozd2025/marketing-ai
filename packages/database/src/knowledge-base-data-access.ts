@@ -753,14 +753,23 @@ export class KnowledgeBaseDataAccess {
          AND asset.indexing_status = 'succeeded'
          AND ($4::uuid IS NULL OR asset.offering_id = $4)
          AND ($5::text IS NULL OR asset.scene = $5)
+         AND ($6::boolean IS NULL OR asset.is_effect_image = $6)
+         AND ($7::boolean = false OR asset.is_real = true)
+         AND (
+           $8::boolean = false
+           OR asset.mime_type IN ('image/jpeg', 'image/png', 'image/webp')
+         )
        ORDER BY embedding.embedding <=> $2::vector, asset.id
-       LIMIT $6`,
+       LIMIT $9`,
       [
         this.merchantId,
         vector,
         embeddingSpace,
         filters.offeringId,
         filters.scene,
+        filters.isEffectImage ?? null,
+        filters.realOnly ?? true,
+        filters.rasterOnly ?? false,
         filters.limit,
       ],
     );

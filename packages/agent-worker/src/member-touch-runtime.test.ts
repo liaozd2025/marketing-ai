@@ -9,6 +9,7 @@ const task: ClaimedAgentTask = {
   completedAt: null,
   conversationId: "conversation-1",
   createdAt: new Date(),
+  createdByMemberId: "member-1",
   errorCode: null,
   errorMessage: null,
   id: "task-1",
@@ -42,7 +43,10 @@ describe("configured member-touch runtime seam", () => {
         }),
         knowledgeBase: {
           getBrandProfile: vi.fn().mockResolvedValue({
+            accentColor: "#F4C7AB",
+            fontStyle: "warm",
             persona: "社区护理主理人",
+            primaryColor: "#7655FF",
             story: "认真经营十年",
             tabooExpressions: [],
             tone: "亲切克制",
@@ -64,34 +68,38 @@ describe("configured member-touch runtime seam", () => {
     } as unknown as Database;
 
     const prepared = await new ConfiguredSkillRuntime(database).prepare(task);
-    expect(prepared.request).toMatchObject({ capability: "text" });
-    if (prepared.request.capability !== "text") {
-      throw new Error("expected text request");
-    }
-    expect(prepared.request.request.messages[0].content).toContain(
-      "MARKETING_AI_MEMBER_TOUCH_PROTOCOL_V1",
-    );
-    const payload = JSON.parse(prepared.request.request.messages[1].content);
-    expect(payload.matrix).toHaveLength(6);
-    expect(payload).not.toHaveProperty("assets");
-    expect(payload).not.toHaveProperty("audiences");
-    expect(listAssets).not.toHaveBeenCalled();
-    expect(listAudiences).not.toHaveBeenCalled();
-
-    const result = prepared.finalize(
-      JSON.stringify({
-        cells: payload.matrix.map(
-          (cell: { scenario: string; segmentKey: string }) => ({
-            ...cell,
-            alternatives: [
-              `{{member_salutation}}，这是一条${cell.scenario}话术。`,
-              `{{member_salutation}}，这是另一条${cell.scenario}话术。`,
-            ],
+    const result = await prepared.execute(async (request) => {
+      expect(request).toMatchObject({ capability: "text" });
+      if (request.capability !== "text") {
+        throw new Error("expected text request");
+      }
+      expect(request.request.messages[0].content).toContain(
+        "MARKETING_AI_MEMBER_TOUCH_PROTOCOL_V1",
+      );
+      const payload = JSON.parse(request.request.messages[1].content);
+      expect(payload.matrix).toHaveLength(6);
+      expect(payload).not.toHaveProperty("assets");
+      expect(payload).not.toHaveProperty("audiences");
+      expect(listAssets).not.toHaveBeenCalled();
+      expect(listAudiences).not.toHaveBeenCalled();
+      return {
+        capability: "text",
+        output: {
+          text: JSON.stringify({
+            cells: payload.matrix.map(
+              (cell: { scenario: string; segmentKey: string }) => ({
+                ...cell,
+                alternatives: [
+                  `{{member_salutation}}，这是一条${cell.scenario}话术。`,
+                  `{{member_salutation}}，这是另一条${cell.scenario}话术。`,
+                ],
+              }),
+            ),
+            protocolVersion: "marketing-ai.member-touch-output.v1",
           }),
-        ),
-        protocolVersion: "marketing-ai.member-touch-output.v1",
-      }),
-    );
+        },
+      };
+    });
     expect(result).toMatchObject({
       cells: expect.arrayContaining([
         expect.objectContaining({

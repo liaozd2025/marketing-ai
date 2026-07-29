@@ -83,4 +83,40 @@ describe("Skill run request", () => {
       skillId: "community",
     });
   });
+
+  it("fixes Xiaohongshu image usage at submission and never allows AI for effect usage", () => {
+    expect(
+      parseSkillRunRequest(
+        {
+          allow_ai_image: false,
+          image_usage: "effect",
+          intent: "写一篇真实护理记录",
+        },
+        "xiaohongshu",
+      ),
+    ).toMatchObject({
+      allowAiImage: false,
+      imageUsage: "effect",
+      skillId: "xiaohongshu",
+    });
+    expect(
+      parseSkillRunRequest(
+        { intent: "写一篇秋季氛围笔记" },
+        "xiaohongshu",
+      ),
+    ).toMatchObject({
+      allowAiImage: false,
+      imageUsage: "atmosphere",
+    });
+    expect(() =>
+      parseSkillRunRequest(
+        {
+          allow_ai_image: true,
+          image_usage: "effect",
+          intent: "生成效果展示",
+        },
+        "xiaohongshu",
+      ),
+    ).toThrow("AI image fallback is forbidden for effect usage");
+  });
 });

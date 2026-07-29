@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactElement } from "react";
+import React, { type CSSProperties, type ReactElement } from "react";
 
 import { compositionStyles } from "./styles";
 import type {

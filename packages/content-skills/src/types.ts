@@ -53,7 +53,10 @@ export interface SkillKnowledgeSnapshot {
     readonly painPoints: string;
   }[];
   readonly brandProfile: {
+    readonly accentColor: string;
+    readonly fontStyle: "editorial" | "modern" | "warm";
     readonly persona: string;
+    readonly primaryColor: string;
     readonly story: string;
     readonly tabooExpressions: readonly string[];
     readonly tone: string;
@@ -82,7 +85,9 @@ export interface SkillKnowledgeSnapshot {
 
 export type SkillTaskInput =
   | {
+      readonly allowAiImage?: boolean;
       readonly action: "generate";
+      readonly imageUsage?: "atmosphere" | "effect";
       readonly intent: string;
       readonly kind: "skill";
       readonly selectedKnowledgeTypes: readonly string[];

@@ -61,6 +61,7 @@ export default async function MemberTouchPage() {
           <Link className="active" href="/workspace/content/member-touch">
             会员生命周期触达
           </Link>
+          <Link href="/workspace/content/xiaohongshu">小红书图文</Link>
         </nav>
         <MemberTouchWorkbench
           initialPlaceholders={preset.memberTouch.placeholders}

@@ -617,6 +617,124 @@ p {
   color: white;
 }
 
+.xhs-composer {
+  display: grid;
+  gap: 18px;
+}
+
+.xhs-composer > label:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.xhs-composer textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.xhs-usage {
+  border: 0;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+}
+
+.xhs-usage legend {
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.xhs-usage label {
+  align-items: flex-start;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  gap: 10px;
+  padding: 14px;
+}
+
+.xhs-usage label span {
+  display: grid;
+  gap: 3px;
+  line-height: 1.5;
+}
+
+.xhs-ai-toggle {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+  line-height: 1.5;
+}
+
+.xhs-results {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.xhs-package-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+}
+
+.xhs-body {
+  white-space: pre-wrap;
+}
+
+.xhs-cover-copy {
+  aspect-ratio: 3 / 4;
+  background:
+    linear-gradient(160deg, rgb(118 85 255 / 88%), rgb(244 199 171 / 92%));
+  border-radius: 18px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  margin: 16px 0;
+  padding: 24px;
+}
+
+.xhs-cover-copy strong {
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.15;
+}
+
+.xhs-cover-copy span {
+  margin-top: 10px;
+}
+
+.primary-link-button {
+  background: var(--ink);
+  border-radius: 12px;
+  color: white;
+  display: inline-flex;
+  font-weight: 800;
+  justify-content: center;
+  padding: 12px 16px;
+  text-decoration: none;
+}
+
+.xhs-sources > div {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.xhs-sources .context-card {
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .xhs-package-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .content-composer {
   background: white;
   border: 1px solid var(--border);

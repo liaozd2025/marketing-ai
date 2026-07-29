@@ -25,6 +25,22 @@ export {
   resolveMemberTouchScenarios,
 } from "./member-touch";
 export type * from "./types";
+export {
+  buildXiaohongshuPrompt,
+  finalizeXiaohongshuCopy,
+  parseXiaohongshuOutput,
+  XIAOHONGSHU_COPY_RESULT_PROTOCOL,
+  XIAOHONGSHU_OUTPUT_PROTOCOL,
+  XIAOHONGSHU_PACKAGE_RESULT_PROTOCOL,
+} from "./xiaohongshu";
+export type {
+  RawXiaohongshuOutput,
+  XiaohongshuCopyResult,
+  XiaohongshuImageUsage,
+  XiaohongshuImageSource,
+  XiaohongshuPackageResult,
+  XiaohongshuTaskInput,
+} from "./xiaohongshu";
 
 function taskInstruction(
   task: SkillTaskInput,

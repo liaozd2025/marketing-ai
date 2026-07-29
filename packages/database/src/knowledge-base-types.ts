@@ -52,7 +52,7 @@ export interface Asset extends TenantRecord {
   readonly indexingStatus: AssetIndexingStatus;
   readonly indexingTaskId: string | null;
   readonly isEffectImage: boolean;
-  readonly isReal: true;
+  readonly isReal: boolean;
   readonly mimeType: string;
   readonly notes: string;
   readonly offeringId: string | null;
@@ -69,8 +69,11 @@ export type AssetIndexingStatus =
   | "failed";
 
 export interface AssetSearchFilters {
+  readonly isEffectImage?: boolean | null;
   readonly limit: number;
   readonly offeringId: string | null;
+  readonly rasterOnly?: boolean;
+  readonly realOnly?: boolean;
   readonly scene: string | null;
 }
 

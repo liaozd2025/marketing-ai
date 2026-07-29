@@ -172,6 +172,44 @@ provider 只返回 `marketing-ai.skill-output.v1` 原始 JSON。严格协议解�
 完成，因此切换真实 OpenAI-compatible provider 不改变结果边界。开发环境的
 确定性 provider 会根据知识库生成完整示例内容，不把 prompt 回显成可发布结果。
 
+### 小红书种草图文 Skill
+
+小红书 Skill 复用同一异步任务入口，不单独拼接三个同步服务。一次任务在 worker
+内依次完成：结构化知识库文案生成 → 标题/正文/封面文字统一合规 →
+embedding 查询 → 本租户 pgvector 语义选图 → `xiaohongshu-cover-3x4`
+Chromium 渲染 → composition 文件与任务结果持久化。
+
+```http
+POST /api/skills/xiaohongshu/runs
+Content-Type: application/json
+
+{
+  "intent": "写一篇秋季暖色氛围的真实护理笔记",
+  "image_usage": "atmosphere",
+  "allow_ai_image": true
+}
+```
+
+HTTP 仍立即返回 `202`，并通过通用
+`GET /api/agent/tasks/{task_id}` 轮询。成功结果是
+`marketing-ai.xiaohongshu-package-result.v1` 完整包，包含标题、正文、封面
+文字和 PNG 下载地址、按相似度排序的配图来源、合规报告及
+`ready | blocked` 发布状态。封面固定为 1080×1440；下载走签名会话保护的
+`GET /api/skills/xiaohongshu/runs/{task_id}/cover`。
+
+`image_usage=effect` 只查询数据库中同时满足 `is_real=true` 和
+`is_effect_image=true` 的本租户已索引图片；请求 AI 辅路线会在 HTTP 边界
+拒绝，绕过 HTTP 的持久任务也会在 worker 边界失败，绝不会调用 image
+provider。`atmosphere` 同样先查租户实拍素材，仅在无结果、请求明确允许且
+`XHS_AI_IMAGE_FALLBACK_ENABLED=true` 与真实图像 provider 密钥同时配置时，
+才进入 AI 生图辅路线。未配置时任务以 `XHS_AI_IMAGE_NOT_CONFIGURED`
+明确失败，不使用开发确定性 provider 假装生成。
+
+标题、正文、封面标题、封面副文案任一命中垂类包或品牌禁忌后，任务结果仍可
+轮询审阅，但 `publishReady=false`、发布状态为 `blocked`，不执行选图和渲染，
+下载接口返回 `423 download_blocked`。T9 composition 不能从通用 composition
+图片接口绕过该门禁。
+
 ## Workspace
 
 - `apps/web`：Next.js Web 与服务端 Action

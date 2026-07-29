@@ -231,3 +231,5 @@ try {
 } finally {
   await database.close();
 }
+
+process.exit(0);

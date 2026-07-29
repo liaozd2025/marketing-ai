@@ -2,14 +2,13 @@ import {
   buildMemberTouchPrompt,
   buildSkillPrompt,
   finalizeMemberTouchRun,
+  type XiaohongshuTaskInput,
   finalizeSkillRun,
   parseMemberTouchOutput,
   parseSkillOutput,
   resolveMemberTouchScenarios,
   SkillProtocolError,
-  type MemberTouchRunResult,
   type SkillKnowledgeSnapshot,
-  type SkillRunResult,
   type SkillTaskInput,
 } from "@marketing-ai/content-skills";
 import {
@@ -23,9 +22,14 @@ import {
 } from "@marketing-ai/vertical-packs";
 import type { AgentRequest } from "@marketing-ai/agent-service";
 
+import {
+  prepareXiaohongshuPackage,
+  type SkillProviderExecutor,
+  type XiaohongshuRuntimeOptions,
+} from "./xiaohongshu-runtime";
+
 export interface PreparedSkillRun {
-  readonly request: AgentRequest;
-  finalize(providerText: string): MemberTouchRunResult | SkillRunResult;
+  execute(executeProvider: SkillProviderExecutor): Promise<unknown>;
 }
 
 export interface SkillRuntime {
@@ -40,7 +44,10 @@ function skillInput(task: ClaimedAgentTask): SkillTaskInput {
 }
 
 export class ConfiguredSkillRuntime implements SkillRuntime {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly xiaohongshuOptions?: XiaohongshuRuntimeOptions,
+  ) {}
 
   async prepare(task: ClaimedAgentTask): Promise<PreparedSkillRun> {
     const input = skillInput(task);
@@ -78,28 +85,35 @@ export class ConfiguredSkillRuntime implements SkillRuntime {
         configuredScenarios,
         knowledge.memberSegments,
       );
-      return {
-        finalize: (providerText) =>
-          finalizeMemberTouchRun({
+      const request: AgentRequest = {
+        capability: "text",
+        request: {
+          messages: buildMemberTouchPrompt({
             complianceLexicon: pack.complianceLexicon,
             configuration,
             knowledge,
-            raw: parseMemberTouchOutput(providerText),
             scenarios,
+            systemInstruction: preset.systemInstruction,
             task: input,
           }),
-        request: {
-          capability: "text",
-          request: {
-            messages: buildMemberTouchPrompt({
-              complianceLexicon: pack.complianceLexicon,
-              configuration,
-              knowledge,
-              scenarios,
-              systemInstruction: preset.systemInstruction,
-              task: input,
-            }),
-          },
+        },
+      };
+      return {
+        execute: async (executeProvider) => {
+          const result = await executeProvider(request);
+          if (result.capability !== "text") {
+            throw new Error(
+              "Member-touch text provider returned wrong capability",
+            );
+          }
+          return finalizeMemberTouchRun({
+            complianceLexicon: pack.complianceLexicon,
+            configuration,
+            knowledge,
+            raw: parseMemberTouchOutput(result.output.text),
+            scenarios,
+            task: input,
+          });
         },
       };
     }
@@ -130,7 +144,10 @@ export class ConfiguredSkillRuntime implements SkillRuntime {
       })),
       brandProfile: brandProfile
         ? {
+            accentColor: brandProfile.accentColor,
+            fontStyle: brandProfile.fontStyle,
             persona: brandProfile.persona,
+            primaryColor: brandProfile.primaryColor,
             story: brandProfile.story,
             tabooExpressions: brandProfile.tabooExpressions,
             tone: brandProfile.tone,
@@ -157,32 +174,60 @@ export class ConfiguredSkillRuntime implements SkillRuntime {
         name: offering.name,
       })),
     };
-    return {
-      finalize: (providerText) =>
-        finalizeSkillRun({
+    if (input.skillId === "xiaohongshu") {
+      if (
+        input.action !== "generate" ||
+        (input.imageUsage !== "atmosphere" &&
+          input.imageUsage !== "effect") ||
+        typeof input.allowAiImage !== "boolean"
+      ) {
+        throw new Error("Xiaohongshu package input is incomplete");
+      }
+      return prepareXiaohongshuPackage({
+        complianceLexicon: pack.complianceLexicon,
+        database: this.database,
+        knowledge,
+        merchant,
+        options: this.xiaohongshuOptions,
+        systemInstruction: preset.systemInstruction,
+        task,
+        taskInput: input as XiaohongshuTaskInput,
+      });
+    }
+    const request: AgentRequest = {
+      capability: "text",
+      request: {
+        messages: buildSkillPrompt({
           complianceLexicon: pack.complianceLexicon,
           knowledge,
           preset,
-          raw: parseSkillOutput(providerText),
           task: input,
         }),
-      request: {
-        capability: "text",
-        request: {
-          messages: buildSkillPrompt({
-            complianceLexicon: pack.complianceLexicon,
-            knowledge,
-            preset,
-            task: input,
-          }),
-        },
+      },
+    };
+    return {
+      execute: async (executeProvider) => {
+        const result = await executeProvider(request);
+        if (result.capability !== "text") {
+          throw new Error("Configured Skill text provider returned wrong capability");
+        }
+        return finalizeSkillRun({
+          complianceLexicon: pack.complianceLexicon,
+          knowledge,
+          preset,
+          raw: parseSkillOutput(result.output.text),
+          task: input,
+        });
       },
     };
   }
 
   private memberTouchKnowledge(input: {
     readonly brandProfile: {
+      readonly accentColor: string;
+      readonly fontStyle: "editorial" | "modern" | "warm";
       readonly persona: string;
+      readonly primaryColor: string;
       readonly story: string;
       readonly tabooExpressions: readonly string[];
       readonly tone: string;

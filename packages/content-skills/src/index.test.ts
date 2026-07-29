@@ -187,7 +187,10 @@ describe("configured content Skill", () => {
     const payload = JSON.parse(messages[1].content);
 
     expect(payload.knowledge.brandProfile).toEqual({
+      accentColor: "#F4C7AB",
+      fontStyle: "modern",
       persona: "在社区做了十年护理的主理人阿慢",
+      primaryColor: "#7C3F58",
       story: "坚持先问感受、再做护理，不用焦虑营销催客。",
       tabooExpressions: ["包变美"],
       tone: "像熟人聊天，具体、克制、不说教",

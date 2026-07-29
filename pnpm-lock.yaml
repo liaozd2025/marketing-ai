@@ -96,6 +96,12 @@ importers:
       '@marketing-ai/database':
         specifier: workspace:*
         version: link:../database
+      '@marketing-ai/html-renderer':
+        specifier: workspace:*
+        version: link:../html-renderer
+      '@marketing-ai/template-composition':
+        specifier: workspace:*
+        version: link:../template-composition
       '@marketing-ai/vertical-packs':
         specifier: workspace:*
         version: link:../vertical-packs
@@ -163,6 +169,9 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
     devDependencies:
+      '@types/node':
+        specifier: ^24.10.0
+        version: 24.13.3
       '@types/react':
         specifier: ^19.2.2
         version: 19.2.17

@@ -13,6 +13,7 @@ import type {
 } from "@marketing-ai/database";
 
 import type { SkillRuntime } from "./skill-runtime";
+import { SkillWorkflowError } from "./xiaohongshu-runtime";
 
 export interface WorkerQueue {
   claimNextTask(workerId: string): Promise<ClaimedAgentTask | null>;
@@ -138,22 +139,24 @@ export class AgentWorker {
       const messages = prepared
         ? []
         : await this.queue.getConversationMessages(task);
-      const result = await this.router.execute({
-        request: prepared
-          ? prepared.request
-          : await requestForTask(
+      const executeProvider = (request: AgentRequest) =>
+        this.router.execute({
+          request,
+          taskAttempt: task.attemptCount,
+          taskId: task.id,
+        });
+      const output = prepared
+        ? await prepared.execute(executeProvider)
+        : (
+            await executeProvider(
+              await requestForTask(
               task,
               messages,
               this.queue,
               this.readAsset,
-            ),
-        taskAttempt: task.attemptCount,
-        taskId: task.id,
-      });
-      const output =
-        prepared && result.capability === "text"
-          ? prepared.finalize(result.output.text)
-          : result.output;
+              ),
+            )
+          ).output;
       await this.queue.completeTask(task, this.workerId, output);
     } catch (error) {
       if (error instanceof ProvidersExhaustedError) {
@@ -169,6 +172,12 @@ export class AgentWorker {
           code: error.code,
           message: error.message,
           retryable: false,
+        });
+      } else if (error instanceof SkillWorkflowError) {
+        await this.queue.failOrRetryTask(task, this.workerId, {
+          code: error.code,
+          message: error.message,
+          retryable: error.retryable,
         });
       } else {
         await this.queue.failOrRetryTask(task, this.workerId, {

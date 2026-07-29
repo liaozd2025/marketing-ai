@@ -234,15 +234,15 @@
     {
       "id": "xiaohongshu",
       "label": "小红书图文",
-      "description": "以真实体验与实拍素材生成小红书图文结构。",
-      "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "asset"],
-      "systemInstruction": "生成真实、有信息密度的小红书图文结构，不编造体验。",
+      "description": "串联文案、pgvector 语义选图和 3:4 模板封面，生成持久化小红书图文包。",
+      "defaultKnowledgeTypes": ["brandProfile", "offering", "audience", "campaign", "memberSegment", "asset"],
+      "systemInstruction": "生成真实、有信息密度且可人工发布的小红书图文包。标题、正文与封面文案信息一致，不编造体验、反馈或效果；效果呈现只能使用数据库中的租户实拍效果素材。",
       "contentTypes": [
         {
           "id": "note",
           "label": "图文笔记",
-          "goal": "用真实门店与 Offering 信息帮助读者判断是否适合。",
-          "assetGuidance": "优先选择多张与体验过程匹配的实拍素材。"
+          "goal": "用真实门店与 Offering 信息帮助读者判断是否适合，并形成标题、正文、封面与配图来源。",
+          "assetGuidance": "用 pgvector 优先选择与主题匹配的租户实拍素材；效果用途只允许实拍效果素材，氛围用途无素材时才可按配置进入 AI 辅路线。"
         }
       ]
     }

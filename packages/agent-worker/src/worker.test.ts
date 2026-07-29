@@ -21,6 +21,7 @@ const task: ClaimedAgentTask = {
   completedAt: null,
   conversationId: "conversation-1",
   createdAt: new Date(),
+  createdByMemberId: "member-1",
   errorCode: null,
   errorMessage: null,
   id: "task-1",

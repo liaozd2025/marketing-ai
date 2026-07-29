@@ -35,6 +35,7 @@ export interface AgentTask {
   readonly completedAt: Date | null;
   readonly conversationId: string | null;
   readonly createdAt: Date;
+  readonly createdByMemberId: string;
   readonly errorCode: string | null;
   readonly errorMessage: string | null;
   readonly id: string;

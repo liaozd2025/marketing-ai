@@ -17,6 +17,7 @@ interface CompositionRow extends QueryResultRow {
   id: string;
   merchant_id: TenantId;
   output_mime_type: "image/png";
+  source_task_id: string | null;
   storage_key: string;
   template_id: string;
   usage: "effect" | "general";
@@ -25,7 +26,7 @@ interface CompositionRow extends QueryResultRow {
 
 const columns = `id, merchant_id, created_by_member_id, asset_id,
   template_id, usage, headline, body, output_mime_type, width, height,
-  byte_size, storage_key, created_at`;
+  byte_size, storage_key, source_task_id, created_at`;
 
 function toComposition(row: CompositionRow): CompositionRecord {
   return {
@@ -39,6 +40,7 @@ function toComposition(row: CompositionRow): CompositionRecord {
     id: row.id,
     merchantId: row.merchant_id,
     outputMimeType: row.output_mime_type,
+    sourceTaskId: row.source_task_id,
     storageKey: row.storage_key,
     templateId: row.template_id,
     usage: row.usage,
@@ -57,8 +59,10 @@ export class CompositionDataAccess {
       `INSERT INTO compositions
          (merchant_id, created_by_member_id, asset_id, template_id, usage,
           headline, body, output_mime_type, width, height, byte_size,
-          storage_key)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'image/png', $8, $9, $10, $11)
+          storage_key, source_task_id)
+       VALUES (
+         $1, $2, $3, $4, $5, $6, $7, 'image/png', $8, $9, $10, $11, $12
+       )
        RETURNING ${columns}`,
       [
         this.merchantId,
@@ -72,6 +76,7 @@ export class CompositionDataAccess {
         input.height,
         input.byteSize,
         input.storageKey,
+        input.sourceTaskId ?? null,
       ],
     );
     return toComposition(result.rows[0]);
@@ -92,12 +97,22 @@ export class CompositionDataAccess {
     const result = await this.executor.query<CompositionRow>(
       `SELECT ${columns}
        FROM compositions
-       WHERE merchant_id = $1
+       WHERE merchant_id = $1 AND source_task_id IS NULL
        ORDER BY created_at DESC, id
        LIMIT $2`,
       [this.merchantId, safeLimit],
     );
     return result.rows.map(toComposition);
+  }
+
+  async getBySourceTask(taskId: string): Promise<CompositionRecord | null> {
+    const result = await this.executor.query<CompositionRow>(
+      `SELECT ${columns}
+       FROM compositions
+       WHERE merchant_id = $1 AND source_task_id = $2`,
+      [this.merchantId, taskId],
+    );
+    return result.rows[0] ? toComposition(result.rows[0]) : null;
   }
 
   async delete(id: string): Promise<CompositionRecord | null> {

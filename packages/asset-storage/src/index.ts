@@ -28,6 +28,17 @@ function storageRoot(): string {
       );
 }
 
+function compositionStorageRoot(): string {
+  const configured = process.env.COMPOSITION_STORAGE_DIR;
+  return configured
+    ? path.resolve(configured)
+    : path.join(
+        process.env.INIT_CWD ?? process.cwd(),
+        ".data",
+        "compositions",
+      );
+}
+
 function extensionFor(file: AssetFile): string {
   const extension = path.extname(file.name).toLowerCase();
   return /^[.][a-z0-9]{1,10}$/.test(extension) ? extension : "";
@@ -41,6 +52,15 @@ function resolveStorageKey(storageKey: string): string {
   );
   if (!resolved.startsWith(`${root}${path.sep}`)) {
     throw new Error("Invalid asset storage key");
+  }
+  return resolved;
+}
+
+function resolveCompositionStorageKey(storageKey: string): string {
+  const root = compositionStorageRoot();
+  const resolved = path.resolve(root, storageKey);
+  if (!resolved.startsWith(`${root}${path.sep}`)) {
+    throw new Error("Invalid composition storage key");
   }
   return resolved;
 }
@@ -74,4 +94,27 @@ export async function readAssetFile(storageKey: string): Promise<Buffer> {
 
 export async function removeAssetFile(storageKey: string): Promise<void> {
   await rm(resolveStorageKey(storageKey), { force: true });
+}
+
+export async function storeCompositionFile(
+  merchantId: string,
+  png: Uint8Array,
+): Promise<string> {
+  const storageKey = `${merchantId}/${randomUUID()}.png`;
+  const target = resolveCompositionStorageKey(storageKey);
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, png, { flag: "wx" });
+  return storageKey;
+}
+
+export async function readCompositionFile(
+  storageKey: string,
+): Promise<Buffer> {
+  return readFile(resolveCompositionStorageKey(storageKey));
+}
+
+export async function removeCompositionFile(
+  storageKey: string,
+): Promise<void> {
+  await rm(resolveCompositionStorageKey(storageKey), { force: true });
 }
