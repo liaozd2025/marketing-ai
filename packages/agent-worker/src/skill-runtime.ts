@@ -23,6 +23,10 @@ import {
 import type { AgentRequest } from "@marketing-ai/agent-service";
 
 import {
+  buildKnowledgeExtractionPrompt,
+  parseKnowledgeExtractionOutput,
+} from "./knowledge-extraction";
+import {
   prepareXiaohongshuPackage,
   type SkillProviderExecutor,
   type XiaohongshuRuntimeOptions,
@@ -50,13 +54,54 @@ export class ConfiguredSkillRuntime implements SkillRuntime {
   ) {}
 
   async prepare(task: ClaimedAgentTask): Promise<PreparedSkillRun> {
-    const input = skillInput(task);
     const tenant = this.database.forTenant(tenantId(task.merchantId));
     const merchant = await tenant.getMerchant();
     if (!merchant) {
       throw new Error("Skill merchant was not found");
     }
     const pack = getVerticalPack(merchant.verticalPackId);
+    if (
+      "kind" in task.input &&
+      task.input.kind === "knowledge-extraction"
+    ) {
+      const input = task.input;
+      const request: AgentRequest = {
+        capability: "text",
+        request: {
+          messages: buildKnowledgeExtractionPrompt({
+            merchantName: merchant.name,
+            pack,
+            sourceContent: input.sourceText,
+            sourceName: input.sourceName,
+          }),
+        },
+      };
+      return {
+        execute: async (executeProvider) => {
+          const result = await executeProvider(request);
+          if (result.capability !== "text") {
+            throw new Error(
+              "Knowledge extraction text provider returned wrong capability",
+            );
+          }
+          const extraction = parseKnowledgeExtractionOutput(
+            result.output.text,
+            pack,
+          );
+          const drafts = await tenant.coldStart.storeExtractionDrafts(
+            input.importId,
+            extraction.drafts,
+          );
+          return {
+            counts: extraction.counts,
+            draftCount: drafts.length,
+            importId: input.importId,
+            protocolVersion: "marketing-ai.knowledge-extraction-result.v1",
+          };
+        },
+      };
+    }
+    const input = skillInput(task);
     const preset = getSkillPreset(pack, input.skillId);
     if (preset.memberTouch) {
       const configuration = preset.memberTouch;

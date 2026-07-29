@@ -22,11 +22,19 @@ export interface AssetSearchTaskInput {
   readonly texts: readonly [string];
 }
 
+export interface KnowledgeExtractionTaskInput {
+  readonly importId: string;
+  readonly kind: "knowledge-extraction";
+  readonly sourceName: string;
+  readonly sourceText: string;
+}
+
 export type AgentTaskInput =
   | { readonly prompt: string }
   | { readonly purpose?: "generic"; readonly texts: readonly string[] }
   | AssetIndexTaskInput
   | AssetSearchTaskInput
+  | KnowledgeExtractionTaskInput
   | SkillTaskInput;
 
 export interface AgentTask {

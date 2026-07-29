@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "acceptance:cold-start": "tsx scripts/knowledge-cold-start-http-acceptance.ts",
     "acceptance:http": "tsx scripts/content-skills-http-acceptance.ts",
     "acceptance:member-touch": "tsx scripts/member-touch-http-acceptance.ts",
     "acceptance:xiaohongshu-http": "tsx scripts/xiaohongshu-http-acceptance.ts",

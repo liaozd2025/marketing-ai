@@ -9,10 +9,10 @@ import {
 import { requireTenantContext } from "@/lib/tenant-context";
 
 import {
-  ColdStartIngestion,
   KnowledgeEntitySection,
   KnowledgeSummary,
 } from "./components";
+import { ColdStartIngestion } from "./cold-start-ingestion";
 
 export const dynamic = "force-dynamic";
 

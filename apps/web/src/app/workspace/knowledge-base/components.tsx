@@ -826,30 +826,6 @@ export function KnowledgeSummary({
   );
 }
 
-export function ColdStartIngestion() {
-  return (
-    <details className="cold-start">
-      <summary>
-        <span>
-          <strong>从已有资料开始</strong>
-          <small>上传文件或添加链接，后续可用于 AI 抽取预填</small>
-        </span>
-        <span>冷启动入口</span>
-      </summary>
-      <div className="cold-start-options">
-        <div>
-          <strong>上传资料文件</strong>
-          <p>结构化抽取能力将在独立 Skill 中接入，当前请使用下方表单录入。</p>
-        </div>
-        <div>
-          <strong>添加资料链接</strong>
-          <p>链接抓取尚未启用，不会把散文档直接写入知识库。</p>
-        </div>
-      </div>
-    </details>
-  );
-}
-
 export function KnowledgeEntitySection({
   active,
   editId,

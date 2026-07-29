@@ -12,6 +12,7 @@ import type {
   ConversationMessage,
 } from "@marketing-ai/database";
 
+import { KnowledgeExtractionProtocolError } from "./knowledge-extraction";
 import type { SkillRuntime } from "./skill-runtime";
 import { SkillWorkflowError } from "./xiaohongshu-runtime";
 
@@ -130,7 +131,7 @@ export class AgentWorker {
 
     try {
       const prepared =
-        "kind" in task.input && task.input.kind === "skill"
+        "kind" in task.input
           ? await this.skillRuntime?.prepare(task)
           : undefined;
       if ("kind" in task.input && !prepared) {
@@ -150,10 +151,10 @@ export class AgentWorker {
         : (
             await executeProvider(
               await requestForTask(
-              task,
-              messages,
-              this.queue,
-              this.readAsset,
+                task,
+                messages,
+                this.queue,
+                this.readAsset,
               ),
             )
           ).output;
@@ -178,6 +179,12 @@ export class AgentWorker {
           code: error.code,
           message: error.message,
           retryable: error.retryable,
+        });
+      } else if (error instanceof KnowledgeExtractionProtocolError) {
+        await this.queue.failOrRetryTask(task, this.workerId, {
+          code: error.code,
+          message: error.message,
+          retryable: false,
         });
       } else {
         await this.queue.failOrRetryTask(task, this.workerId, {

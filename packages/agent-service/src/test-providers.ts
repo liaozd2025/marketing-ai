@@ -260,6 +260,91 @@ function deterministicXiaohongshuOutput(
   });
 }
 
+function deterministicKnowledgeExtractionOutput(
+  request: Parameters<TextProvider["generate"]>[0],
+): string | null {
+  if (
+    !request.messages.some(
+      ({ content, role }) =>
+        role === "system" &&
+        content.includes("marketing-ai.knowledge-extraction-output.v1"),
+    )
+  ) {
+    return null;
+  }
+  const source =
+    [...request.messages]
+      .reverse()
+      .find(({ role }) => role === "user")
+      ?.content ?? "";
+  if (!source.includes("[[fixture:knowledge-cold-start]]")) {
+    return JSON.stringify({
+      assets: [],
+      audiences: [],
+      brandProfile: null,
+      campaigns: [],
+      memberSegments: [],
+      offerings: [],
+      protocolVersion: "marketing-ai.knowledge-extraction-output.v1",
+    });
+  }
+  return JSON.stringify({
+    assets: [
+      {
+        isEffectImage: false,
+        notes: "商家门头与护理间环境实拍",
+        originalName: "溪岚护理门店实拍.png",
+        scene: "门店环境",
+      },
+    ],
+    audiences: [
+      {
+        addressStyle: "姐妹",
+        motivations: "希望在下班后安静放松",
+        name: "久坐上班族",
+        painPoints: "肩颈容易紧绷，又怕被推销",
+      },
+    ],
+    brandProfile: {
+      persona: "社区护理主理人",
+      story: "认真经营十年，坚持先沟通再安排服务",
+      tabooExpressions: ["根治", "100%有效"],
+      tone: "亲切克制",
+    },
+    campaigns: [
+      {
+        endsAt: "2026-08-31T15:59:59.000Z",
+        name: "八月晚间预约礼",
+        offerDetails: "工作日晚间预约赠热敷十分钟",
+        rules: "提前一天预约，每人限一次",
+        startsAt: "2026-08-01T00:00:00.000Z",
+      },
+    ],
+    memberSegments: [
+      {
+        communicationGoal: "温和提醒，不制造焦虑",
+        definition: "连续 60 天未到店的客群分层定义",
+        name: "60 天未到店",
+        triggerScenarios: "换季关怀",
+      },
+    ],
+    offerings: [
+      {
+        description: "先沟通日常状态，再做 60 分钟手法放松",
+        fieldValues: {
+          durationMinutes: 60,
+          offeringType: "service",
+          price: 298,
+          sellingPoints: "轻重随时沟通，使用独立安静护理间",
+          suitableFor: "久坐、下班后想放松的人",
+        },
+        name: "肩颈舒缓护理",
+      },
+    ],
+    protocolVersion: "marketing-ai.knowledge-extraction-output.v1",
+  });
+}
+
 function deterministicSkillOutput(
   request: Parameters<TextProvider["generate"]>[0],
 ): string | null {
@@ -452,6 +537,11 @@ export class DeterministicTextProvider implements TextProvider {
   constructor(readonly id = "test-text") {}
 
   async generate(request: Parameters<TextProvider["generate"]>[0]) {
+    const knowledgeExtractionOutput =
+      deterministicKnowledgeExtractionOutput(request);
+    if (knowledgeExtractionOutput) {
+      return { text: knowledgeExtractionOutput };
+    }
     const memberTouchOutput = deterministicMemberTouchOutput(request);
     if (memberTouchOutput) {
       return { text: memberTouchOutput };

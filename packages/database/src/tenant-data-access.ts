@@ -1,4 +1,4 @@
-import type { QueryResultRow } from "pg";
+import type { Pool, QueryResultRow } from "pg";
 
 import type {
   Member,
@@ -8,6 +8,7 @@ import type {
 } from "./types";
 import { CompositionDataAccess } from "./composition-data-access";
 import { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
+import { KnowledgeColdStartDataAccess } from "./knowledge-cold-start-data-access";
 
 interface MerchantRow extends QueryResultRow {
   created_at: Date;
@@ -52,11 +53,27 @@ function toMember(row: MemberRow): Member {
 export class TenantDataAccess {
   readonly compositions: CompositionDataAccess;
   readonly knowledgeBase: KnowledgeBaseDataAccess;
+  private readonly coldStartAccess: KnowledgeColdStartDataAccess | null;
+  private readonly merchantId: TenantId;
 
+  constructor(executor: SqlExecutor, merchantId: TenantId);
+  constructor(
+    executor: SqlExecutor,
+    pool: Pool,
+    merchantId: TenantId,
+  );
   constructor(
     private readonly executor: SqlExecutor,
-    private readonly merchantId: TenantId,
+    poolOrMerchantId: Pool | TenantId,
+    merchantId?: TenantId,
   ) {
+    this.merchantId = merchantId ?? (poolOrMerchantId as TenantId);
+    this.coldStartAccess = merchantId
+      ? new KnowledgeColdStartDataAccess(
+          poolOrMerchantId as Pool,
+          this.merchantId,
+        )
+      : null;
     this.compositions = new CompositionDataAccess(
       this.executor,
       this.merchantId,
@@ -65,6 +82,13 @@ export class TenantDataAccess {
       this.executor,
       this.merchantId,
     );
+  }
+
+  get coldStart(): KnowledgeColdStartDataAccess {
+    if (!this.coldStartAccess) {
+      throw new Error("Cold-start access requires a transactional pool");
+    }
+    return this.coldStartAccess;
   }
 
   async getMerchant(): Promise<Merchant | null> {

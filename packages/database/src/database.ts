@@ -30,7 +30,7 @@ export class Database {
   }
 
   forTenant(merchantId: TenantId): TenantDataAccess {
-    return new TenantDataAccess(this.executor, merchantId);
+    return new TenantDataAccess(this.executor, this.pool, merchantId);
   }
 
   async close(): Promise<void> {

@@ -12,7 +12,9 @@ export {
 export { TenantDataAccess } from "./tenant-data-access";
 export { CompositionDataAccess } from "./composition-data-access";
 export { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
+export { KnowledgeColdStartDataAccess } from "./knowledge-cold-start-data-access";
 export { embeddingVector } from "./embedding";
+export { containsPersonalInformation } from "./personal-information";
 export { tenantId } from "./types";
 export type {
   Asset,
@@ -31,6 +33,16 @@ export type {
   Offering,
   OfferingInput,
 } from "./knowledge-base-types";
+export type {
+  ConfirmKnowledgeDraftInput,
+  CreateKnowledgeImportInput,
+  KnowledgeDraftEntityType,
+  KnowledgeDraftStatus,
+  KnowledgeEntityDraft,
+  KnowledgeImport,
+  KnowledgeImportStatus,
+  StoreKnowledgeDraftInput,
+} from "./knowledge-cold-start-types";
 export type {
   CompositionRecord,
   CompositionRecordInput,

@@ -244,6 +244,57 @@ ADR-0001 定义的六类结构化知识库实体，而不是文件夹式文档�
 - 「素材」页支持自然语言语义检索，并可同时按场景与 Offering 筛选。搜索同样
   先返回 `202` 任务，再由页面轮询结果，HTTP 请求不等待 embedding 慢调用
 
+### 知识库冷启动
+
+「从已有资料开始」支持直接粘贴，或上传 TXT、Markdown、CSV、JSON、HTML
+文本资料（单份最大 100 KB）。提交只会在现有 `agent_tasks` 创建 text 任务，
+仍由共享 worker 和 provider 路由异步执行：
+
+```http
+POST /api/knowledge-base/imports
+Content-Type: application/json
+
+{"source_name":"点评店铺介绍","text":"...商家原始资料..."}
+```
+
+返回 `202` 后，通过
+`GET /api/knowledge-base/imports/:import_id` 读取任务状态和六类抽取计数。
+provider 必须返回严格的
+`marketing-ai.knowledge-extraction-output.v1` JSON；协议解析、Offering
+垂类字段校验和会员分层零 PII 检查在 worker 内完成。原始资料会在入队前
+拦截手机号、身份证号、邮箱、微信号及带字段标签的姓名；抽取信息不完整时保留
+为空字段草稿，由商家补全，不会令整批任务失败。抽取结果只写
+`knowledge_entity_drafts`，不会触碰六个知识库实体表。
+
+每条草稿必须调用以下接口确认或不采纳：
+
+```http
+PATCH /api/knowledge-base/imports/:import_id/drafts/:draft_id
+Content-Type: application/json
+
+{"action":"confirm","payload":{...商家核对或修正后的字段...}}
+{"action":"reject"}
+```
+
+`confirm` 会在同一数据库事务内写入目标实体并把草稿标记为已确认；未确认和
+不采纳的草稿均不会入库。素材抽取先生成元数据草稿；确认素材时接口改用
+`multipart/form-data`，同时提交 `action=confirm`、JSON `payload` 与真实
+图片/视频 `file`。服务端保存真实文件，并在确认事务内沿用现有素材表和
+embedding 队列；没有真实文件不能确认。当前文本冷启动不声称具备 PDF、
+Office、图片 OCR 或网页抓取能力。
+
+无外部模型密钥时，自动验收使用明确标记的
+`packages/agent-worker/fixtures/seed-merchant.md` 与开发环境确定性 provider，
+只证明 provider contract 和端到端状态机，不代表外部模型抽取质量。真实签名
+HTTP/worker 验收命令：
+
+```bash
+DATABASE_URL=postgresql://marketing_ai:marketing_ai@localhost:5436/marketing_ai \
+SESSION_SECRET=replace-with-the-same-web-secret \
+ACCEPTANCE_BASE_URL=http://localhost:3105 \
+pnpm --filter @marketing-ai/agent-worker acceptance:cold-start
+```
+
 素材检索 API：
 
 ```http
