@@ -8,6 +8,7 @@ import type {
 
 export type {
   ComplianceLexiconEntry,
+  MemberTouchConfiguration,
   OfferingFieldDefinition,
   OfferingFieldOption,
   OfferingFieldType,
@@ -46,6 +47,22 @@ function assertPack(pack: VerticalPack): void {
     const contentTypeIds = preset.contentTypes.map(({ id }) => id);
     if (new Set(contentTypeIds).size !== contentTypeIds.length) {
       throw new Error(`Duplicate content type in Skill preset ${preset.id}`);
+    }
+    if (preset.memberTouch) {
+      const placeholderKeys = preset.memberTouch.placeholders.map(
+        ({ key }) => key,
+      );
+      if (
+        preset.memberTouch.minimumAlternatives !== 2 ||
+        preset.memberTouch.maximumAlternatives !== 3 ||
+        placeholderKeys.length === 0 ||
+        new Set(placeholderKeys).size !== placeholderKeys.length ||
+        placeholderKeys.some((key) => !/^[a-z][a-z0-9_]*$/.test(key))
+      ) {
+        throw new Error(
+          `Invalid member-touch configuration in Skill preset ${preset.id}`,
+        );
+      }
     }
   }
 }

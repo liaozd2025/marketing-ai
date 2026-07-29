@@ -13,6 +13,7 @@ function response(body: unknown): Response {
 
 describe("agent task polling seam", () => {
   it("waits through queued and running before returning the result", async () => {
+    const statuses: string[] = [];
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(response({ status: "queued", task_id: "task-1" }))
@@ -30,9 +31,11 @@ describe("agent task polling seam", () => {
         fetcher,
         intervalMs: 0,
         maxAttempts: 3,
+        onStatus: (status) => statuses.push(status),
       }),
     ).resolves.toMatchObject({ result: { items: [1, 2, 3] } });
     expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(statuses).toEqual(["queued", "running", "succeeded"]);
   });
 
   it("surfaces a terminal worker failure", async () => {

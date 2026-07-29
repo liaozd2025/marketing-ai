@@ -47,27 +47,46 @@ describe("knowledge-base input boundary", () => {
     ).toThrow();
   });
 
-  it("accepts only zero-PII fields for a member segment", () => {
-    const result = parseMemberSegment(
-      formData({
-        communicationGoal: "提醒复购",
-        definition: "60 天内没有到店的会员群体定义",
-        email: "not-stored@example.com",
-        name: "沉睡会员",
-        phone: "13800000000",
-        triggerScenarios: "节日前唤醒",
-      }),
-    );
+  it("rejects PII fields and values instead of reading or persisting them", () => {
+    expect(() =>
+      parseMemberSegment(
+        formData({
+          communicationGoal: "提醒复购",
+          definition: "60 天内没有到店的会员群体定义",
+          email: "not-stored@example.com",
+          name: "沉睡会员",
+          phone: "13800000000",
+          triggerScenarios: "节日前唤醒",
+        }),
+      ),
+    ).toThrow("会员分层不得包含个人信息字段");
 
-    expect(result).toEqual({
+    expect(() =>
+      parseMemberSegment(
+        formData({
+          communicationGoal: "联系手机号 13800000000",
+          definition: "60 天内没有到店的会员群体定义",
+          name: "沉睡会员",
+          triggerScenarios: "节日前唤醒",
+        }),
+      ),
+    ).toThrow("会员分层定义不得包含个人信息");
+
+    expect(
+      parseMemberSegment(
+        formData({
+          communicationGoal: "提醒复购",
+          definition: "60 天内没有到店的会员群体定义",
+          name: "沉睡会员",
+          triggerScenarios: "节日前唤醒",
+        }),
+      ),
+    ).toEqual({
       communicationGoal: "提醒复购",
       definition: "60 天内没有到店的会员群体定义",
       name: "沉睡会员",
       triggerScenarios: "节日前唤醒",
     });
-    expect(Object.keys(result)).not.toEqual(
-      expect.arrayContaining(["email", "phone"]),
-    );
   });
 
   it("rejects a campaign ending before it starts", () => {

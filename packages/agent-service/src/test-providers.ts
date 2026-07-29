@@ -147,6 +147,58 @@ function firstRecord(value: unknown): Record<string, unknown> {
   return Array.isArray(value) ? asRecord(value[0]) : {};
 }
 
+function deterministicMemberTouchOutput(
+  request: Parameters<TextProvider["generate"]>[0],
+): string | null {
+  if (
+    !request.messages.some(
+      ({ content, role }) =>
+        role === "system" &&
+        content.includes("MARKETING_AI_MEMBER_TOUCH_PROTOCOL_V1"),
+    )
+  ) {
+    return null;
+  }
+  const latest = [...request.messages]
+    .reverse()
+    .find((message) => message.role === "user");
+  const payload = asRecord(JSON.parse(latest?.content ?? "{}"));
+  const matrix = Array.isArray(payload.matrix)
+    ? payload.matrix.map(asRecord)
+    : [];
+  const placeholderKeys = new Set(
+    (Array.isArray(payload.placeholders) ? payload.placeholders : [])
+      .map(asRecord)
+      .map((placeholder) => textValue(placeholder.key))
+      .filter(Boolean),
+  );
+  const fallbackPlaceholder =
+    [...placeholderKeys][0] ?? "member_salutation";
+  const marker = (key: string) =>
+    `{{${placeholderKeys.has(key) ? key : fallbackPlaceholder}}}`;
+
+  return JSON.stringify({
+    cells: matrix.map((entry) => {
+      const scenario = textValue(entry.scenario);
+      const salutation = marker("member_salutation");
+      const detail = scenario.includes("到期")
+        ? `${marker("expiry_date")}前`
+        : scenario.includes("复购") || scenario.includes("唤醒")
+          ? `了解${marker("offering_name")}`
+          : `通过${marker("booking_method")}联系我们`;
+      return {
+        alternatives: [
+          `${salutation}，这是一条${scenario}提醒：${detail}，如有需要可以先问问。`,
+          `${salutation}，想和你温和说一声，${scenario}时可以${detail}，确认合适再安排。`,
+        ],
+        scenario,
+        segmentKey: textValue(entry.segmentKey),
+      };
+    }),
+    protocolVersion: "marketing-ai.member-touch-output.v1",
+  });
+}
+
 function deterministicSkillOutput(
   request: Parameters<TextProvider["generate"]>[0],
 ): string | null {
@@ -284,6 +336,10 @@ export class DeterministicTextProvider implements TextProvider {
   constructor(readonly id = "test-text") {}
 
   async generate(request: Parameters<TextProvider["generate"]>[0]) {
+    const memberTouchOutput = deterministicMemberTouchOutput(request);
+    if (memberTouchOutput) {
+      return { text: memberTouchOutput };
+    }
     const skillOutput = deterministicSkillOutput(request);
     if (skillOutput) {
       return { text: skillOutput };

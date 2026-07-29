@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["puppeteer"],
   transpilePackages: [
+    "@marketing-ai/content-skills",
     "@marketing-ai/database",
     "@marketing-ai/html-renderer",
     "@marketing-ai/template-composition",

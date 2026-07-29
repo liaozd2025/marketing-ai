@@ -34,6 +34,16 @@ export interface ComplianceLexiconEntry {
   readonly term: string;
 }
 
+export interface MemberTouchConfiguration {
+  readonly maximumAlternatives: number;
+  readonly minimumAlternatives: number;
+  readonly placeholders: readonly {
+    readonly description: string;
+    readonly key: string;
+    readonly label: string;
+  }[];
+}
+
 export interface SkillPreset {
   readonly contentTypes: readonly {
     readonly assetGuidance: string;
@@ -45,6 +55,7 @@ export interface SkillPreset {
   readonly description: string;
   readonly id: string;
   readonly label: string;
+  readonly memberTouch?: MemberTouchConfiguration;
   readonly systemInstruction: string;
 }
 

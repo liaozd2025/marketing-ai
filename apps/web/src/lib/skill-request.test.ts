@@ -47,4 +47,33 @@ describe("Skill run request", () => {
       sourceText: "号称根治",
     });
   });
+
+  it("accepts no merchant-supplied values for a zero-PII member-touch run", () => {
+    expect(
+      parseSkillRunRequest({}, "member-touch", {
+        zeroPiiGenerateOnly: true,
+      }),
+    ).toEqual({
+      action: "generate",
+      capability: "text",
+      intent: "按会员分层与触达场景生成零 PII 话术模板",
+      kind: "skill",
+      selectedKnowledgeTypes: [],
+      skillId: "member-touch",
+    });
+
+    for (const rejected of [
+      { intent: "张女士最近没来" },
+      { member_name: "张女士" },
+      { member_phone: "13800138000" },
+      { placeholders: { member_salutation: "张女士" } },
+      { action: "refine", source_text: "任意文本" },
+    ]) {
+      expect(() =>
+        parseSkillRunRequest(rejected, "member-touch", {
+          zeroPiiGenerateOnly: true,
+        }),
+      ).toThrow(InvalidSkillRequestError);
+    }
+  });
 });

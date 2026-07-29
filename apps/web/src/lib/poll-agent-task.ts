@@ -20,6 +20,7 @@ export async function pollAgentTask<Result>(
     readonly fetcher?: typeof fetch;
     readonly intervalMs?: number;
     readonly maxAttempts?: number;
+    readonly onStatus?: (status: PolledAgentTask["status"]) => void;
   } = {},
 ): Promise<PolledAgentTask<Result>> {
   const fetcher = options.fetcher ?? fetch;
@@ -34,6 +35,7 @@ export async function pollAgentTask<Result>(
       throw new Error(`轮询任务失败（HTTP ${response.status}）`);
     }
     const task = (await response.json()) as PolledAgentTask<Result>;
+    options.onStatus?.(task.status);
     if (task.status === "succeeded") return task;
     if (task.status === "failed") throw new AgentTaskFailedError(task);
     await new Promise((resolve) => setTimeout(resolve, intervalMs));

@@ -1,5 +1,6 @@
 import { validateContent } from "@marketing-ai/compliance";
 
+import { SkillProtocolError } from "./errors";
 import {
   SKILL_PROTOCOL,
   SKILL_RESULT_PROTOCOL,
@@ -14,16 +15,16 @@ import {
   type SkillTaskInput,
 } from "./types";
 
+export { SkillProtocolError } from "./errors";
+export {
+  buildMemberTouchPrompt,
+  finalizeMemberTouchRun,
+  MEMBER_TOUCH_PROTOCOL,
+  MEMBER_TOUCH_RESULT_PROTOCOL,
+  parseMemberTouchOutput,
+  resolveMemberTouchScenarios,
+} from "./member-touch";
 export type * from "./types";
-
-export class SkillProtocolError extends Error {
-  readonly code = "INVALID_SKILL_PROVIDER_OUTPUT";
-
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = "SkillProtocolError";
-  }
-}
 
 function taskInstruction(
   task: SkillTaskInput,

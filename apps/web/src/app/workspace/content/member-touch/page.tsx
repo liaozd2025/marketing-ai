@@ -1,34 +1,33 @@
-import { getVerticalPack } from "@marketing-ai/vertical-packs";
+import {
+  resolveMemberTouchScenarios,
+} from "@marketing-ai/content-skills";
+import {
+  getSkillPreset,
+  getVerticalPack,
+} from "@marketing-ai/vertical-packs";
 import Link from "next/link";
 
 import { logoutAction } from "@/app/actions";
-import { buildKnowledgeBaseSummary } from "@/lib/knowledge-base-summary";
 import { requireTenantContext } from "@/lib/tenant-context";
 
-import { DailyMomentsWorkbench } from "./workbench";
+import { MemberTouchWorkbench } from "./workbench";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewContentPage() {
+export default async function MemberTouchPage() {
   const { merchant, tenant } = await requireTenantContext();
-  const [assets, audiences, brandProfile, campaigns, memberSegments, offerings] =
-    await Promise.all([
-      tenant.knowledgeBase.listAssets(),
-      tenant.knowledgeBase.listAudiences(),
-      tenant.knowledgeBase.getBrandProfile(),
-      tenant.knowledgeBase.listCampaigns(),
-      tenant.knowledgeBase.listMemberSegments(),
-      tenant.knowledgeBase.listOfferings(),
-    ]);
-  const context = buildKnowledgeBaseSummary({
-    assets,
-    audiences,
-    brandProfile,
-    campaigns,
+  const memberSegments = await tenant.knowledgeBase.listMemberSegments();
+  const pack = getVerticalPack(merchant.verticalPackId);
+  const preset = getSkillPreset(pack, "member-touch");
+  if (!preset.memberTouch) {
+    throw new Error("Member-touch configuration is missing");
+  }
+  const configuredScenarios =
+    pack.scenarioVocabulary.find(({ key }) => key === preset.id)?.terms ?? [];
+  const scenarios = resolveMemberTouchScenarios(
+    configuredScenarios,
     memberSegments,
-    offerings,
-    pack: getVerticalPack(merchant.verticalPackId),
-  });
+  );
 
   return (
     <main className="workspace-shell">
@@ -39,10 +38,12 @@ export default async function NewContentPage() {
             <span>Marketing AI</span>
           </Link>
           <nav aria-label="主导航">
-            <Link className="active" href="/workspace/content/new">
+            <Link href="/workspace/content/new">
               新建内容
             </Link>
-            <a aria-disabled="true" href="#skills">Skill 技能</a>
+            <Link className="active" href="/workspace/content/member-touch">
+              会员触达
+            </Link>
             <Link href="/workspace/knowledge-base">我的资料</Link>
             <a aria-disabled="true" href="#content-library">内容库</a>
           </nav>
@@ -56,14 +57,16 @@ export default async function NewContentPage() {
       </aside>
       <section className="workspace-content content-workspace">
         <nav aria-label="内容 Skill" className="skill-switcher">
-          <Link className="active" href="/workspace/content/new">
-            朋友圈日更
-          </Link>
-          <Link href="/workspace/content/member-touch">
+          <Link href="/workspace/content/new">朋友圈日更</Link>
+          <Link className="active" href="/workspace/content/member-touch">
             会员生命周期触达
           </Link>
         </nav>
-        <DailyMomentsWorkbench context={context} />
+        <MemberTouchWorkbench
+          initialPlaceholders={preset.memberTouch.placeholders}
+          initialScenarios={scenarios}
+          segmentCount={memberSegments.length}
+        />
       </section>
     </main>
   );

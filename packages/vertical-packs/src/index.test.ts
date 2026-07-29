@@ -29,6 +29,25 @@ describe("vertical pack public interface", () => {
       "seeding",
       "campaign",
     ]);
+    const memberTouchVocabulary = pack.scenarioVocabulary.find(
+      ({ key }) => key === "member-touch",
+    );
+    expect(memberTouchVocabulary?.terms).toEqual([
+      "新客欢迎",
+      "复购唤醒",
+      "沉睡唤醒",
+      "卡项到期",
+      "生日关怀",
+    ]);
+    expect(pack.skillPresets[1].memberTouch).toMatchObject({
+      maximumAlternatives: 3,
+      minimumAlternatives: 2,
+      placeholders: expect.arrayContaining([
+        expect.objectContaining({ key: "member_salutation" }),
+        expect.objectContaining({ key: "expiry_date" }),
+        expect.objectContaining({ key: "remaining_uses" }),
+      ]),
+    });
   });
 
   it("uses the same field configuration for validation and completeness", () => {

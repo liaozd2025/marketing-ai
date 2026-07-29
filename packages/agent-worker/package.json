@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "acceptance:http": "tsx scripts/daily-moments-http-acceptance.ts",
+    "acceptance:member-touch": "tsx scripts/member-touch-http-acceptance.ts",
     "dev": "node --env-file-if-exists=../../apps/web/.env.local --import tsx --watch src/run.ts",
     "start": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts",
     "once": "node --env-file-if-exists=../../apps/web/.env.local --import tsx src/run.ts --once",

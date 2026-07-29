@@ -138,12 +138,50 @@ export function parseCampaign(formData: FormData) {
 }
 
 export function parseMemberSegment(formData: FormData) {
-  return memberSegmentSchema.parse({
+  const allowedFields = new Set([
+    "communicationGoal",
+    "definition",
+    "name",
+    "triggerScenarios",
+  ]);
+  const piiField = [...formData.keys()].find(
+    (key) =>
+      !allowedFields.has(key) &&
+      !key.startsWith("$ACTION_") &&
+      /(?:name|phone|mobile|email|address|birthday|birth|id.?card|member.?id|wechat|姓名|手机|邮箱|地址|生日|身份证|微信)/i.test(
+        key,
+      ),
+  );
+  if (piiField) {
+    throw new z.ZodError([
+      {
+        code: "custom",
+        message: "会员分层不得包含个人信息字段",
+        path: [piiField],
+      },
+    ]);
+  }
+  const input = {
     communicationGoal: formText(formData, "communicationGoal"),
     definition: formText(formData, "definition"),
     name: formText(formData, "name"),
     triggerScenarios: formText(formData, "triggerScenarios"),
-  });
+  };
+  const serialized = Object.values(input).join("\n");
+  if (
+    /(?:^|[^\d])1[3-9]\d{9}(?:$|[^\d])/.test(serialized) ||
+    /\b\d{17}[\dXx]\b/.test(serialized) ||
+    /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(serialized)
+  ) {
+    throw new z.ZodError([
+      {
+        code: "custom",
+        message: "会员分层定义不得包含个人信息",
+        path: ["memberSegment"],
+      },
+    ]);
+  }
+  return memberSegmentSchema.parse(input);
 }
 
 export function parseAssetMetadata(formData: FormData) {

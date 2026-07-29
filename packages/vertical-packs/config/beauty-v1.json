@@ -72,7 +72,7 @@
     {
       "key": "member-touch",
       "label": "会员触达",
-      "terms": ["新客欢迎", "复购提醒", "沉睡唤醒", "卡项将到期", "生日关怀"]
+      "terms": ["新客欢迎", "复购唤醒", "沉睡唤醒", "卡项到期", "生日关怀"]
     },
     {
       "key": "community",
@@ -156,7 +156,43 @@
       "label": "会员触达",
       "description": "按会员分层定义生成触达话术模板，不接触会员个人信息。",
       "defaultKnowledgeTypes": ["brandProfile", "offering", "memberSegment", "campaign"],
-      "systemInstruction": "按会员分层定义生成不含个人信息的触达模板。",
+      "systemInstruction": "按完整的会员分层×触达场景矩阵生成通用模板。不得请求、接收、推断或输出任何会员个人信息；每条话术只使用配置允许的占位符，由商家发送前在平台外自行替换。",
+      "memberTouch": {
+        "minimumAlternatives": 2,
+        "maximumAlternatives": 3,
+        "placeholders": [
+          {
+            "key": "member_salutation",
+            "label": "对方称呼",
+            "description": "发送前在平台外填写对方称呼，不要把真实称呼提交到平台。"
+          },
+          {
+            "key": "offering_name",
+            "label": "Offering 名称",
+            "description": "发送前填写本次要介绍的服务、卡项或产品名称。"
+          },
+          {
+            "key": "campaign_name",
+            "label": "活动名称",
+            "description": "有适用活动时，发送前填写知识库中已确认的活动名称。"
+          },
+          {
+            "key": "expiry_date",
+            "label": "到期日期",
+            "description": "发送前在平台外填写实际到期日期，平台不接收该值。"
+          },
+          {
+            "key": "remaining_uses",
+            "label": "剩余次数",
+            "description": "发送前在平台外填写实际剩余次数，平台不接收该值。"
+          },
+          {
+            "key": "booking_method",
+            "label": "预约方式",
+            "description": "发送前填写商家自己的预约方式。"
+          }
+        ]
+      },
       "contentTypes": [
         {
           "id": "message",

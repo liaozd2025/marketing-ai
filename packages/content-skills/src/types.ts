@@ -19,7 +19,20 @@ export interface ConfiguredSkillPreset {
   readonly description: string;
   readonly id: string;
   readonly label: string;
+  readonly memberTouch?: MemberTouchConfiguration;
   readonly systemInstruction: string;
+}
+
+export interface MemberTouchPlaceholderDefinition {
+  readonly description: string;
+  readonly key: string;
+  readonly label: string;
+}
+
+export interface MemberTouchConfiguration {
+  readonly maximumAlternatives: number;
+  readonly minimumAlternatives: number;
+  readonly placeholders: readonly MemberTouchPlaceholderDefinition[];
 }
 
 export interface SkillKnowledgeSnapshot {
@@ -146,5 +159,62 @@ export interface FinalizeSkillInput {
   readonly knowledge: SkillKnowledgeSnapshot;
   readonly preset: ConfiguredSkillPreset;
   readonly raw: RawSkillOutput;
+  readonly task: SkillTaskInput;
+}
+
+export interface RawMemberTouchCell {
+  readonly alternatives: readonly string[];
+  readonly scenario: string;
+  readonly segmentKey: string;
+}
+
+export interface RawMemberTouchOutput {
+  readonly cells: readonly RawMemberTouchCell[];
+  readonly protocolVersion: "marketing-ai.member-touch-output.v1";
+}
+
+export interface MemberTouchAlternativeResult {
+  readonly compliance: {
+    readonly blocked: boolean;
+    readonly hits: readonly ComplianceHit[];
+  };
+  readonly copyReady: boolean;
+  readonly placeholders: readonly string[];
+  readonly text: string;
+}
+
+export interface MemberTouchCellResult {
+  readonly alternatives: readonly MemberTouchAlternativeResult[];
+  readonly scenario: string;
+  readonly segment: {
+    readonly communicationGoal: string;
+    readonly definition: string;
+    readonly key: string;
+    readonly name: string;
+    readonly triggerScenarios: string;
+  };
+}
+
+export interface MemberTouchRunResult {
+  readonly action: "generate";
+  readonly cells: readonly MemberTouchCellResult[];
+  readonly context: {
+    readonly brandProfile: number;
+    readonly campaigns: number;
+    readonly memberSegments: number;
+    readonly offerings: number;
+  };
+  readonly placeholderDefinitions: readonly MemberTouchPlaceholderDefinition[];
+  readonly protocolVersion: "marketing-ai.member-touch-result.v1";
+  readonly scenarios: readonly string[];
+  readonly skillId: string;
+}
+
+export interface FinalizeMemberTouchInput {
+  readonly complianceLexicon: readonly ComplianceRule[];
+  readonly configuration: MemberTouchConfiguration;
+  readonly knowledge: SkillKnowledgeSnapshot;
+  readonly raw: RawMemberTouchOutput;
+  readonly scenarios: readonly string[];
   readonly task: SkillTaskInput;
 }

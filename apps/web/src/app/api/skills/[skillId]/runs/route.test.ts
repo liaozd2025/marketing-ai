@@ -20,6 +20,9 @@ vi.mock("@/lib/session", () => ({ getSession: mocks.getSession }));
 import { POST } from "./route";
 
 const context = { params: Promise.resolve({ skillId: "daily-moments" }) };
+const memberTouchContext = {
+  params: Promise.resolve({ skillId: "member-touch" }),
+};
 
 describe("POST /api/skills/[skillId]/runs", () => {
   beforeEach(() => {
@@ -88,5 +91,38 @@ describe("POST /api/skills/[skillId]/runs", () => {
       context,
     );
     expect(unauthorized.status).toBe(401);
+  });
+
+  it("queues member-touch without accepting any PII-bearing input fields", async () => {
+    const accepted = await POST(
+      new Request("http://localhost/api/skills/member-touch/runs", {
+        body: "{}",
+        method: "POST",
+      }),
+      memberTouchContext,
+    );
+    expect(accepted.status).toBe(202);
+    expect(mocks.submitTask).toHaveBeenCalledWith(
+      "member-from-session",
+      expect.objectContaining({
+        intent: "按会员分层与触达场景生成零 PII 话术模板",
+        selectedKnowledgeTypes: [],
+        skillId: "member-touch",
+      }),
+    );
+
+    mocks.submitTask.mockClear();
+    const rejected = await POST(
+      new Request("http://localhost/api/skills/member-touch/runs", {
+        body: JSON.stringify({
+          member_name: "张女士",
+          member_phone: "13800138000",
+        }),
+        method: "POST",
+      }),
+      memberTouchContext,
+    );
+    expect(rejected.status).toBe(400);
+    expect(mocks.submitTask).not.toHaveBeenCalled();
   });
 });

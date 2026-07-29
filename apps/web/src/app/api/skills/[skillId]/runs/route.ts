@@ -31,7 +31,9 @@ export async function POST(request: Request, context: RouteContext) {
       getVerticalPack(merchant.verticalPackId),
       skillId,
     );
-    const input = parseSkillRunRequest(await request.json(), skillId);
+    const input = parseSkillRunRequest(await request.json(), skillId, {
+      zeroPiiGenerateOnly: Boolean(preset.memberTouch),
+    });
     if (
       "kind" in input &&
       input.action !== "generate" &&

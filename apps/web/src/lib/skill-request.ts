@@ -32,6 +32,7 @@ function text(
 export function parseSkillRunRequest(
   value: unknown,
   skillId: string,
+  policy: { readonly zeroPiiGenerateOnly?: boolean } = {},
 ): SubmitAgentTaskInput {
   const input = record(value);
   if ("merchant_id" in input || "merchantId" in input || "tenant_id" in input) {
@@ -40,6 +41,27 @@ export function parseSkillRunRequest(
     );
   }
   const safeSkillId = text(skillId, "skillId", 100);
+  if (policy.zeroPiiGenerateOnly) {
+    const unsupportedFields = Object.keys(input).filter(
+      (key) => key !== "action",
+    );
+    if (
+      unsupportedFields.length > 0 ||
+      (input.action !== undefined && input.action !== "generate")
+    ) {
+      throw new InvalidSkillRequestError(
+        "Member-touch accepts no personal data or merchant-supplied values",
+      );
+    }
+    return {
+      action: "generate",
+      capability: "text",
+      intent: "按会员分层与触达场景生成零 PII 话术模板",
+      kind: "skill",
+      selectedKnowledgeTypes: [],
+      skillId: safeSkillId,
+    };
+  }
   if (input.action === undefined || input.action === "generate") {
     const selectedKnowledgeTypes =
       input.selected_knowledge_types === undefined
