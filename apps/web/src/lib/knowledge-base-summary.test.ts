@@ -33,7 +33,10 @@ describe("knowledge-base completeness signal", () => {
       audiences: [],
       brandProfile: {
         ...record,
+        accentColor: "#F4C7AB",
+        fontStyle: "modern",
         persona: "亲切主理人",
+        primaryColor: "#7655FF",
         story: "十年社区门店",
         tabooExpressions: [],
         tone: "真实克制",

@@ -159,6 +159,25 @@ function BrandProfileSection({
               <p>{profile.tone}</p>
               <p className="record-label">品牌故事</p>
               <p>{profile.story}</p>
+              <p className="record-label">品牌视觉</p>
+              <div className="brand-visual-summary">
+                <span
+                  aria-label={`主色 ${profile.primaryColor}`}
+                  style={{ backgroundColor: profile.primaryColor }}
+                />
+                <span
+                  aria-label={`辅助色 ${profile.accentColor}`}
+                  style={{ backgroundColor: profile.accentColor }}
+                />
+                <p>
+                  {profile.primaryColor} / {profile.accentColor} ·{" "}
+                  {profile.fontStyle === "modern"
+                    ? "现代简洁"
+                    : profile.fontStyle === "warm"
+                      ? "温暖亲和"
+                      : "编辑感"}
+                </p>
+              </div>
               <p className="record-label">禁忌表达</p>
               <p>
                 {profile.tabooExpressions.length
@@ -202,6 +221,35 @@ function BrandProfileSection({
             name="story"
             placeholder="为什么开店、坚持什么、希望给客人什么体验"
           />
+        </Field>
+        <div className="brand-visual-fields">
+          <Field label="品牌主色">
+            <input
+              defaultValue={profile?.primaryColor ?? "#7655FF"}
+              name="primaryColor"
+              type="color"
+            />
+          </Field>
+          <Field label="品牌辅助色">
+            <input
+              defaultValue={profile?.accentColor ?? "#F4C7AB"}
+              name="accentColor"
+              type="color"
+            />
+          </Field>
+        </div>
+        <Field
+          help="使用安全的中文系统字体组合，出图时无需加载外部字体。"
+          label="字体气质"
+        >
+          <select
+            defaultValue={profile?.fontStyle ?? "modern"}
+            name="fontStyle"
+          >
+            <option value="modern">现代简洁</option>
+            <option value="warm">温暖亲和</option>
+            <option value="editorial">编辑感</option>
+          </select>
         </Field>
         <Field
           help="用逗号或换行分隔；这里是商家自己的禁忌，不替代垂类违禁词表。"

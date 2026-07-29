@@ -7,9 +7,13 @@ import { z } from "zod";
 const recordIdSchema = z.uuid();
 const requiredText = z.string().trim().min(1).max(2_000);
 const optionalText = z.string().trim().max(5_000);
+const brandColor = z.string().regex(/^#[0-9A-F]{6}$/i);
 
 const brandProfileSchema = z.object({
+  accentColor: brandColor,
+  fontStyle: z.enum(["modern", "warm", "editorial"]),
   persona: requiredText,
+  primaryColor: brandColor,
   story: requiredText,
   tabooExpressions: z.array(z.string().trim().min(1).max(100)).max(100),
   tone: requiredText,
@@ -73,7 +77,10 @@ export function parseRecordId(value: string): string {
 
 export function parseBrandProfile(formData: FormData) {
   return brandProfileSchema.parse({
+    accentColor: formText(formData, "accentColor"),
+    fontStyle: formText(formData, "fontStyle"),
     persona: formText(formData, "persona"),
+    primaryColor: formText(formData, "primaryColor"),
     story: formText(formData, "story"),
     tabooExpressions: formText(formData, "tabooExpressions")
       .split(/[,\n，]/)

@@ -92,6 +92,7 @@ export default async function KnowledgeBasePage({
             <Link className="active" href="/workspace/knowledge-base">
               我的资料
             </Link>
+            <Link href="/workspace/compositions">模板出图</Link>
             <a aria-disabled="true" href="#content-library">
               内容库
             </a>

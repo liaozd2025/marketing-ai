@@ -36,6 +36,7 @@ export default async function WorkspacePage() {
               工作台
             </a>
             <Link href="/workspace/knowledge-base">我的资料</Link>
+            <Link href="/workspace/compositions">模板出图</Link>
             <a href="#members">成员</a>
           </nav>
         </div>
@@ -90,6 +91,14 @@ export default async function WorkspacePage() {
                 </li>
               ))}
             </ul>
+          </section>
+          <section className="info-card">
+            <span className="card-index">03</span>
+            <h3>模板出图</h3>
+            <p>用品牌视觉、中文文案和商家实拍素材生成平台图片。</p>
+            <Link className="status" href="/workspace/compositions">
+              进入合成
+            </Link>
           </section>
         </div>
       </section>

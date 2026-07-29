@@ -24,7 +24,10 @@ interface RecordRow extends QueryResultRow {
 }
 
 interface BrandProfileRow extends RecordRow {
+  accent_color: string;
+  font_style: "editorial" | "modern" | "warm";
   persona: string;
+  primary_color: string;
   story: string;
   taboo_expressions: string[];
   tone: string;
@@ -82,7 +85,10 @@ function base(row: RecordRow) {
 function toBrandProfile(row: BrandProfileRow): BrandProfile {
   return {
     ...base(row),
+    accentColor: row.accent_color,
+    fontStyle: row.font_style,
     persona: row.persona,
+    primaryColor: row.primary_color,
     story: row.story,
     tabooExpressions: row.taboo_expressions,
     tone: row.tone,
@@ -157,7 +163,7 @@ export class KnowledgeBaseDataAccess {
   async getBrandProfile(): Promise<BrandProfile | null> {
     const result = await this.executor.query<BrandProfileRow>(
       `SELECT id, merchant_id, persona, tone, story, taboo_expressions,
-              created_at, updated_at
+              primary_color, accent_color, font_style, created_at, updated_at
        FROM brand_profiles
        WHERE merchant_id = $1`,
       [this.merchantId],
@@ -168,16 +174,21 @@ export class KnowledgeBaseDataAccess {
   async saveBrandProfile(input: BrandProfileInput): Promise<BrandProfile> {
     const result = await this.executor.query<BrandProfileRow>(
       `INSERT INTO brand_profiles
-         (merchant_id, persona, tone, story, taboo_expressions)
-       VALUES ($1, $2, $3, $4, $5)
+         (merchant_id, persona, tone, story, taboo_expressions,
+          primary_color, accent_color, font_style)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (merchant_id) DO UPDATE SET
          persona = EXCLUDED.persona,
          tone = EXCLUDED.tone,
          story = EXCLUDED.story,
          taboo_expressions = EXCLUDED.taboo_expressions,
+         primary_color = EXCLUDED.primary_color,
+         accent_color = EXCLUDED.accent_color,
+         font_style = EXCLUDED.font_style,
          updated_at = now()
        WHERE brand_profiles.merchant_id = $1
        RETURNING id, merchant_id, persona, tone, story, taboo_expressions,
+                 primary_color, accent_color, font_style,
                  created_at, updated_at`,
       [
         this.merchantId,
@@ -185,6 +196,9 @@ export class KnowledgeBaseDataAccess {
         input.tone,
         input.story,
         [...input.tabooExpressions],
+        input.primaryColor ?? "#7655FF",
+        input.accentColor ?? "#F4C7AB",
+        input.fontStyle ?? "modern",
       ],
     );
     return toBrandProfile(result.rows[0]);

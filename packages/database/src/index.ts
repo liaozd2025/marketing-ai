@@ -10,6 +10,7 @@ export {
   TenantAgentDataAccess,
 } from "./tenant-agent-data-access";
 export { TenantDataAccess } from "./tenant-data-access";
+export { CompositionDataAccess } from "./composition-data-access";
 export { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
 export { tenantId } from "./types";
 export type {
@@ -26,6 +27,10 @@ export type {
   Offering,
   OfferingInput,
 } from "./knowledge-base-types";
+export type {
+  CompositionRecord,
+  CompositionRecordInput,
+} from "./composition-types";
 export type {
   AuthenticatedMember,
   Member,

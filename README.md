@@ -152,6 +152,9 @@ provider 只返回 `marketing-ai.skill-output.v1` 原始 JSON。严格协议解�
 - `packages/content-skills`：配置驱动的 Skill prompt/输出协议、素材匹配和结果组装
 - `packages/compliance`：独立、纯函数式、垂类无硬编码的合规校验器
 - `packages/vertical-packs`：可版本化垂类包配置、加载与 Offering 字段校验
+- `packages/template-composition`：模板 schema、registry 与 Web/出图共享的
+  React 模板组件
+- `packages/html-renderer`：真实 headless Chromium HTML→PNG 渲染器
 
 ## 知识库与垂类包
 
@@ -181,6 +184,80 @@ GET /api/knowledge-base/summary
 
 第二个接口返回六类实体的记录数与完善度，供后续生成页的知识库上下文面板
 使用。
+
+## HTML 模板合成
+
+登录后从 `/workspace/compositions` 进入「模板出图」。首批内置模板：
+
+- `xiaohongshu-cover-3x4`：1080×1440 小红书 3:4 封面
+- `moments-copy-card`：1080×1080 朋友圈话术卡片
+
+浏览器预览和服务端出图都调用
+`@marketing-ai/template-composition` 的同一个 `CompositionCanvas`，不是两套
+排版。新增模板只需添加 React 模板定义并注册尺寸/名称；Chromium 渲染器不包含
+模板分支。
+
+服务端输入只接受模板 ID、标题、正文、用途和素材 ID。商家身份、品牌视觉与素材
+文件全部来自签名会话绑定的数据层；API 不接受客户端自报租户。素材从租户目录
+读出后按 PNG/JPEG/WebP 文件魔数复核，再以内嵌 data URL 交给模板。效果类用途
+只接受同时标记为「实拍」和「效果类」的素材。
+
+```http
+POST /api/compositions
+Content-Type: application/json
+
+{
+  "templateId": "xiaohongshu-cover-3x4",
+  "assetId": "uuid",
+  "headline": "今天，也要好好照顾自己",
+  "body": "到店后的松弛感，藏在每一次认真护理里。",
+  "usage": "general"
+}
+```
+
+成功返回 `201` 与生成记录，PNG 从签名会话保护的
+`GET /api/compositions/:id/image` 读取。`GET /api/compositions` 返回当前商家
+最近生成记录。生成物默认写入 `.data/compositions`；生产环境应设置
+`COMPOSITION_STORAGE_DIR` 指向持久化卷。
+
+渲染器禁用页面 JavaScript 和所有外部网络请求。截图前会逐字核对中文 DOM、
+实拍图加载状态和文字/画布溢出，截图后再读取 PNG IHDR 验证真实像素尺寸。
+
+本机可显式使用已安装 Chrome：
+
+```bash
+CHROMIUM_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  pnpm renderer:smoke
+```
+
+Chromium 沙箱默认开启。只有运行环境已经做了独立容器/进程隔离且无法启动
+Chrome 沙箱时，才显式设置 `CHROMIUM_DISABLE_SANDBOX=1`。
+
+没有系统 Chrome 的 CI/服务器先安装 Puppeteer 管理的浏览器，并缓存
+`$PUPPETEER_CACHE_DIR`：
+
+```bash
+PUPPETEER_CACHE_DIR="$PWD/.cache/puppeteer" pnpm renderer:install-browser
+PUPPETEER_CACHE_DIR="$PWD/.cache/puppeteer" pnpm renderer:smoke
+```
+
+需要验证完整的签名会话、API 出图和跨租户反证时，先对独立测试库迁移并启动
+构建后的 Web，再在相同的 `DATABASE_URL`、`SESSION_SECRET`、素材目录与生成物
+目录环境下运行：
+
+```bash
+COMPOSITION_VERIFY_BASE_URL=http://127.0.0.1:3019 \
+  COMPOSITION_VERIFY_OUTPUT=/tmp/marketing-ai-composition.png \
+  pnpm verify:composition-api
+```
+
+脚本会验证未登录/篡改会话、请求体租户注入、跨租户素材和跨租户成图读取，并独立
+读取 PNG IHDR 核对尺寸；临时生成记录和文件会在结束时清理。
+
+部署边界：模板预览可以运行在任意 Next.js Web 节点；`POST /api/compositions`
+必须运行在 Node.js runtime，镜像内需有兼容 Chromium、中文系统字体、可写且持久
+的素材/生成物目录。当前 MVP 由 API 节点同步启动 Chromium；扩容时可把
+`@marketing-ai/html-renderer` 原样移入独立任务 worker，模板契约无需变化。
 
 ## PostgreSQL 集成验证
 

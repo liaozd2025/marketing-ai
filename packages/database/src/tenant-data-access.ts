@@ -6,6 +6,7 @@ import type {
   SqlExecutor,
   TenantId,
 } from "./types";
+import { CompositionDataAccess } from "./composition-data-access";
 import { KnowledgeBaseDataAccess } from "./knowledge-base-data-access";
 
 interface MerchantRow extends QueryResultRow {
@@ -49,12 +50,17 @@ function toMember(row: MemberRow): Member {
  * one tenant and does not expose methods that accept a merchantId argument.
  */
 export class TenantDataAccess {
+  readonly compositions: CompositionDataAccess;
   readonly knowledgeBase: KnowledgeBaseDataAccess;
 
   constructor(
     private readonly executor: SqlExecutor,
     private readonly merchantId: TenantId,
   ) {
+    this.compositions = new CompositionDataAccess(
+      this.executor,
+      this.merchantId,
+    );
     this.knowledgeBase = new KnowledgeBaseDataAccess(
       this.executor,
       this.merchantId,

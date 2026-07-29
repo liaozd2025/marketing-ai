@@ -46,7 +46,10 @@ describeWithDatabase("knowledge-base tenant API against PostgreSQL", () => {
   it("creates, reads, updates, and deletes a complete six-entity knowledge base", async () => {
     const knowledgeBase = database.forTenant(merchantAId).knowledgeBase;
     const brandProfile = await knowledgeBase.saveBrandProfile({
+      accentColor: "#F4C7AB",
+      fontStyle: "warm",
       persona: "社区门店主理人",
+      primaryColor: "#7C3F58",
       story: "十年真实经营",
       tabooExpressions: ["夸大承诺"],
       tone: "亲切克制",
@@ -94,6 +97,11 @@ describeWithDatabase("knowledge-base tenant API against PostgreSQL", () => {
     await expect(knowledgeBase.getBrandProfile()).resolves.toEqual(
       brandProfile,
     );
+    expect(brandProfile).toMatchObject({
+      accentColor: "#F4C7AB",
+      fontStyle: "warm",
+      primaryColor: "#7C3F58",
+    });
     await expect(knowledgeBase.listOfferings()).resolves.toEqual([offering]);
     await expect(knowledgeBase.listAudiences()).resolves.toEqual([audience]);
     await expect(knowledgeBase.listCampaigns()).resolves.toEqual([campaign]);

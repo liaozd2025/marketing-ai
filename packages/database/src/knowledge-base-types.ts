@@ -8,7 +8,10 @@ interface TenantRecord {
 }
 
 export interface BrandProfile extends TenantRecord {
+  readonly accentColor: string;
+  readonly fontStyle: "editorial" | "modern" | "warm";
   readonly persona: string;
+  readonly primaryColor: string;
   readonly story: string;
   readonly tabooExpressions: readonly string[];
   readonly tone: string;
@@ -55,7 +58,10 @@ export interface Asset extends TenantRecord {
 }
 
 export interface BrandProfileInput {
+  readonly accentColor?: string;
+  readonly fontStyle?: "editorial" | "modern" | "warm";
   readonly persona: string;
+  readonly primaryColor?: string;
   readonly story: string;
   readonly tabooExpressions: readonly string[];
   readonly tone: string;

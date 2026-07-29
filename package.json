@@ -9,8 +9,11 @@
     "dev": "docker compose up -d --wait db && pnpm db:migrate && pnpm --parallel --filter @marketing-ai/web --filter @marketing-ai/agent-worker run dev",
     "dev:down": "docker compose down",
     "lint": "eslint . --max-warnings=0",
+    "renderer:install-browser": "pnpm --filter @marketing-ai/html-renderer install-browser",
+    "renderer:smoke": "pnpm --filter @marketing-ai/html-renderer test",
     "test": "pnpm --recursive --if-present test",
     "typecheck": "pnpm --recursive --if-present typecheck",
+    "verify:composition-api": "pnpm --filter @marketing-ai/web verify:composition-api",
     "worker": "pnpm --filter @marketing-ai/agent-worker start",
     "worker:once": "pnpm --filter @marketing-ai/agent-worker once"
   },

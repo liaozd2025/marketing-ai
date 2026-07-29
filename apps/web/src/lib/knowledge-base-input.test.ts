@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseBrandProfile,
   parseCampaign,
   parseMemberSegment,
 } from "./knowledge-base-input";
@@ -14,6 +15,38 @@ function formData(values: Record<string, string>): FormData {
 }
 
 describe("knowledge-base input boundary", () => {
+  it("accepts only constrained visual tokens for a brand profile", () => {
+    expect(
+      parseBrandProfile(
+        formData({
+          accentColor: "#F4C7AB",
+          fontStyle: "editorial",
+          persona: "主理人",
+          primaryColor: "#7C3F58",
+          story: "十年真实经营",
+          tabooExpressions: "包治百病",
+          tone: "亲切克制",
+        }),
+      ),
+    ).toMatchObject({
+      accentColor: "#F4C7AB",
+      fontStyle: "editorial",
+      primaryColor: "#7C3F58",
+    });
+    expect(() =>
+      parseBrandProfile(
+        formData({
+          accentColor: "#F4C7AB",
+          fontStyle: "url",
+          persona: "主理人",
+          primaryColor: "url(javascript:x)",
+          story: "十年真实经营",
+          tone: "亲切克制",
+        }),
+      ),
+    ).toThrow();
+  });
+
   it("accepts only zero-PII fields for a member segment", () => {
     const result = parseMemberSegment(
       formData({
